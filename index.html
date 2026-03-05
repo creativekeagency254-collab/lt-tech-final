@@ -1,18 +1,128 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" id="appRoot">
+<html lang="en-KE" data-theme="light" id="appRoot">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Life Time Limited — Premium Electronics Kenya</title>
+<title>Life Time Technology Store | Premium Electronics in Kenya</title>
+<meta name="description" content="Shop premium smartphones, laptops, watches, tablets and audio devices at Life Time Technology Store in Kenya. Fast delivery, secure checkout and trusted brands."/>
+<meta name="keywords" content="Life Time Technology Store, electronics Kenya, smartphones Kenya, laptops Kenya, smart watches Kenya, tablets Kenya, audio Kenya"/>
+<meta name="robots" content="index,follow,max-image-preview:large"/>
+<meta name="author" content="Life Time Technology Store"/>
+<link rel="canonical" href="https://lifetimetechnology.store/"/>
+<link rel="alternate" href="https://lifetimetechnology.store/" hreflang="en-ke"/>
+<meta property="og:locale" content="en_KE"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="Life Time Technology Store"/>
+<meta property="og:title" content="Life Time Technology Store | Premium Electronics in Kenya"/>
+<meta property="og:description" content="Buy phones, laptops, wearables, tablets and audio devices online in Kenya with secure checkout."/>
+<meta property="og:url" content="https://lifetimetechnology.store/"/>
+<meta property="og:image" content="https://lifetimetechnology.store/assets/images/logo-original.png"/>
+<meta property="og:image:alt" content="Life Time Technology Store logo"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Life Time Technology Store | Premium Electronics in Kenya"/>
+<meta name="twitter:description" content="Shop smartphones, laptops, watches, tablets and audio devices in Kenya."/>
+<meta name="twitter:image" content="https://lifetimetechnology.store/assets/images/logo-original.png"/>
+<meta name="theme-color" content="#F97316"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://images.unsplash.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
-<link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg"/>
+<link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://lifetimetechnology.store/#organization",
+      "name": "Life Time Technology Store",
+      "url": "https://lifetimetechnology.store/",
+      "logo": "https://lifetimetechnology.store/assets/images/logo-original.png",
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "telephone": "+254705925800",
+          "areaServed": "KE",
+          "availableLanguage": ["en"]
+        }
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://lifetimetechnology.store/#website",
+      "url": "https://lifetimetechnology.store/",
+      "name": "Life Time Technology Store",
+      "inLanguage": "en-KE",
+      "publisher": {"@id": "https://lifetimetechnology.store/#organization"},
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://lifetimetechnology.store/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-mobile",
+      "name": "Mobile Collection",
+      "url": "https://lifetimetechnology.store/?category=smartphones"
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-computing",
+      "name": "Computing Hub",
+      "url": "https://lifetimetechnology.store/?category=laptops"
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-wearables",
+      "name": "Wearables Corner",
+      "url": "https://lifetimetechnology.store/?category=watches"
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-audio",
+      "name": "Audio Lounge",
+      "url": "https://lifetimetechnology.store/?category=audio"
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-tablets",
+      "name": "Tablet Center",
+      "url": "https://lifetimetechnology.store/?category=tablets"
+    },
+    {
+      "@type": "SiteNavigationElement",
+      "@id": "https://lifetimetechnology.store/#nav-jewerlys",
+      "name": "Jewelry Picks",
+      "url": "https://lifetimetechnology.store/?category=jewerlys"
+    },
+    {
+      "@type": "CollectionPage",
+      "@id": "https://lifetimetechnology.store/#catalog",
+      "url": "https://lifetimetechnology.store/",
+      "name": "Electronics Product Catalog",
+      "isPartOf": {"@id": "https://lifetimetechnology.store/#website"},
+      "about": [
+        {"@type": "Thing", "name": "Mobile Collection"},
+        {"@type": "Thing", "name": "Computing Hub"},
+        {"@type": "Thing", "name": "Wearables Corner"},
+        {"@type": "Thing", "name": "Tablet Center"},
+        {"@type": "Thing", "name": "Audio Lounge"},
+        {"@type": "Thing", "name": "Jewelry Picks"}
+      ]
+    }
+  ]
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://js.paystack.co/v2/inline.js"></script>
-<link rel="stylesheet" href="./assets/css/site.css"/>
+<link rel="stylesheet" href="./assets/styles/site.css"/>
 </head>
 <body>
+<h1 class="sr-only">Life Time Technology Store - Premium Electronics in Kenya</h1>
+<p class="sr-only">Shop smartphones, laptops, smart watches, tablets and audio devices with secure checkout and fast delivery in Kenya.</p>
 
 <!-- MOBILE SIDEBAR OVERLAY -->
 <div class="mob-overlay" id="mobOverlay"></div>
@@ -23,7 +133,7 @@
   <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo" onclick="navigate('explore')">
-      <img src="./assets/img/logo-original.png" alt="Lifetime Tech logo" class="brand-logo-img"/>
+      <img src="./assets/images/logo-original.png" alt="Lifetime Tech logo" class="brand-logo-img"/>
     </div>
     <div class="sidebar-body">
       <div class="sidebar-label">Shop</div>
@@ -68,16 +178,12 @@
     <div class="sidebar-bottom">
       <!-- Theme switcher -->
       <div class="theme-switcher" onclick="toggleTheme()" id="themeSwitcher">
-        <span class="ts-icon" id="themeIcon">🌙</span>
+        <span class="ts-icon" id="themeIcon">ðŸŒ™</span>
         <span class="ts-label" id="themeLabel">Dark Mode</span>
         <div class="ts-track" id="tsTrack">
           <div class="ts-thumb"></div>
         </div>
       </div>
-      <button class="btn-admin-sidebar" onclick="openAdmin()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Admin Dashboard
-      </button>
     </div>
   </aside>
 
@@ -92,22 +198,18 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
       </button>
       <div class="topbar-stat">
-        <div class="big" id="topbarNum">—</div>
-        <div class="sm" id="topbarSub">Orders · All time</div>
+        <div class="big" id="topbarNum">â€”</div>
+        <div class="sm" id="topbarSub">Orders Â· All time</div>
       </div>
       <div class="topbar-toggle-group">
-        <div class="tg-btn active" id="tgDash" onclick="topbarToggle('dash')">Dashboard</div>
-        <div class="tg-btn" id="tgSite" onclick="topbarToggle('site')">Website</div>
+        <div class="tg-btn active" id="tgElectronics" onclick="topbarToggle('electronics')">Electronics</div>
+        <div class="tg-btn" id="tgJewerlys" onclick="topbarToggle('jewerlys')">Jewerlys</div>
       </div>
       <div class="search-wrap">
         <div class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-        <input class="search-input" type="text" placeholder="Search phones, laptops, watches..." id="searchInput" oninput="doSearch(this.value)"/>
+        <input class="search-input" type="text" placeholder="Search phones, laptops, watches..." id="searchInput" name="q" aria-label="Search products" oninput="doSearch(this.value)"/>
       </div>
       <div class="topbar-actions">
-        <button class="btn-admin-header" onclick="openAdmin()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="16" x2="8.01" y2="16"/></svg>
-          Admin Dashboard
-        </button>
         <div class="icon-btn" onclick="openCart()" title="Basket">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           <span class="cart-badge" id="cartBadge" style="display:none">0</span>
@@ -121,15 +223,15 @@
         <h2 id="pageTitle">Explore</h2>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <div class="cat-chips" id="catChips">
-            <div class="cat-chip active" onclick="setCat('all')" data-f="all">
+            <a class="cat-chip active" href="/?category=all" onclick="event.preventDefault(); setCat('all')" data-f="all">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               All
-            </div>
-            <div class="cat-chip" onclick="setCat('smartphones')" data-f="smartphones">Phones</div>
-            <div class="cat-chip" onclick="setCat('laptops')" data-f="laptops">Laptops</div>
-            <div class="cat-chip" onclick="setCat('watches')" data-f="watches">Watches</div>
-            <div class="cat-chip" onclick="setCat('audio')" data-f="audio">Audio</div>
-            <div class="cat-chip" onclick="setCat('tablets')" data-f="tablets">Tablets</div>
+            </a>
+            <a class="cat-chip" href="/?category=smartphones" onclick="event.preventDefault(); setCat('smartphones')" data-f="smartphones">Phones</a>
+            <a class="cat-chip" href="/?category=laptops" onclick="event.preventDefault(); setCat('laptops')" data-f="laptops">Laptops</a>
+            <a class="cat-chip" href="/?category=watches" onclick="event.preventDefault(); setCat('watches')" data-f="watches">Watches</a>
+            <a class="cat-chip" href="/?category=audio" onclick="event.preventDefault(); setCat('audio')" data-f="audio">Audio</a>
+            <a class="cat-chip" href="/?category=tablets" onclick="event.preventDefault(); setCat('tablets')" data-f="tablets">Tablets</a>
           </div>
           <div class="filter-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><circle cx="12" cy="4" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="20" r="2"/></svg>
@@ -143,7 +245,7 @@
         <!-- MAIN HERO BANNER - image managed in admin -->
         <div class="hero-banner-img" onclick="setCat('smartphones')" id="heroBanner1">
           <div class="hero-pulse"></div>
-          <img id="heroBanner1Img" src="" alt="" onerror="this.style.display='none'" style="display:none"/>
+          <img id="heroBanner1Img" src="" alt="Featured smartphone deals in Kenya" onerror="this.style.display='none'" style="display:none"/>
           <div class="hb-overlay" id="heroBanner1Overlay" style="background:linear-gradient(135deg,#F97316,#ea580c)">
             <div class="hb-tag">Limited Time Offer</div>
             <div class="hb-title" id="heroBanner1Title">Up to 20% Off<br/>Smartphones</div>
@@ -156,7 +258,7 @@
         </div>
         <!-- PROMO CARD 1 - image managed in admin -->
         <div class="promo-img-card" onclick="setCat('laptops')" id="promoCard1">
-          <img id="promoCard1Img" src="" alt="" onerror="this.style.display='none'" style="display:none;width:100%;height:100%;object-fit:cover"/>
+          <img id="promoCard1Img" src="" alt="Latest laptop arrivals" onerror="this.style.display='none'" style="display:none;width:100%;height:100%;object-fit:cover"/>
           <div class="pic-overlay" id="promoCard1Overlay" style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);min-height:150px;position:relative">
             <div style="position:absolute;top:14px;right:14px;width:28px;height:28px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" style="width:13px;height:13px"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
             <div style="position:absolute;bottom:14px;left:14px">
@@ -168,7 +270,7 @@
         </div>
         <!-- PROMO CARD 2 - image managed in admin -->
         <div class="promo-img-card" onclick="setCat('watches')" id="promoCard2">
-          <img id="promoCard2Img" src="" alt="" onerror="this.style.display='none'" style="display:none;width:100%;height:100%;object-fit:cover"/>
+          <img id="promoCard2Img" src="" alt="Featured smart watches and wearables" onerror="this.style.display='none'" style="display:none;width:100%;height:100%;object-fit:cover"/>
           <div class="pic-overlay" id="promoCard2Overlay" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);min-height:150px;position:relative">
             <div style="position:absolute;top:14px;right:14px;width:28px;height:28px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" style="width:13px;height:13px"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
             <div style="position:absolute;bottom:14px;left:14px">
@@ -248,8 +350,9 @@
     <footer class="site-footer" id="siteFooter">
       <div class="sf-grid">
         <div class="sf-brand">
-          <img src="./assets/img/logo-original.png" alt="Lifetime Tech logo" class="footer-logo-img"/>
-          <p>Kenya's premier destination for premium electronics. Phones, laptops, watches & audio — all in one place.</p>
+          <img src="./assets/images/logo-original.png" alt="Lifetime Tech logo" class="footer-logo-img"/>
+          <p>Kenya's premier destination for premium electronics. Phones, laptops, watches & audio â€” all in one place.</p>
+          <div class="sf-signals" id="brandSignals"></div>
           <div class="sf-socials">
             <div class="sf-social" title="Instagram">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
@@ -267,11 +370,12 @@
         </div>
         <div class="sf-col">
           <h5>Shop</h5>
-          <a onclick="setCat('smartphones')">Smartphones</a>
-          <a onclick="setCat('laptops')">Laptops</a>
-          <a onclick="setCat('watches')">Watches</a>
-          <a onclick="setCat('audio')">Audio</a>
-          <a onclick="setCat('tablets')">Tablets</a>
+          <a href="/?category=smartphones" onclick="event.preventDefault(); setCat('smartphones')">Mobile Collection</a>
+          <a href="/?category=laptops" onclick="event.preventDefault(); setCat('laptops')">Computing Hub</a>
+          <a href="/?category=watches" onclick="event.preventDefault(); setCat('watches')">Wearables Corner</a>
+          <a href="/?category=audio" onclick="event.preventDefault(); setCat('audio')">Audio Lounge</a>
+          <a href="/?category=tablets" onclick="event.preventDefault(); setCat('tablets')">Tablet Center</a>
+          <a href="/?category=jewerlys" onclick="event.preventDefault(); setCat('jewerlys')">Jewelry Picks</a>
         </div>
         <div class="sf-col">
           <h5>Support</h5>
@@ -291,7 +395,10 @@
         </div>
       </div>
       <div class="sf-bottom">
-        <p>© 2026 <strong>Lifetime Tech Limited</strong> · Nairobi, Kenya · All rights reserved</p>
+        <div class="sf-bottom-left">
+          <p>© 2026 <strong>Lifetime Tech Limited</strong> · Nairobi, Kenya · All rights reserved</p>
+          <button class="sf-admin-link" type="button" onclick="openAdmin()">Admin Dashboard Access</button>
+        </div>
         <p style="font-size:11px;color:var(--text5)">Payments secured by Paystack · M-Pesa · Visa · Mastercard</p>
       </div>
     </footer>
@@ -411,9 +518,9 @@
       <div class="admin-body">
         <!-- Stats -->
         <div class="admin-stats-row">
-          <div class="a-stat accent glass-card"><div class="asl">Products</div><div class="asv" id="aStatProd">—</div><div class="ass">In catalogue</div></div>
-          <div class="a-stat"><div class="asl">Orders</div><div class="asv" id="aStatOrders">—</div><div class="ass">All time</div></div>
-          <div class="a-stat"><div class="asl">Revenue (KES)</div><div class="asv" id="aStatRev">—</div><div class="ass">Paid orders</div></div>
+          <div class="a-stat accent glass-card"><div class="asl">Products</div><div class="asv" id="aStatProd">â€”</div><div class="ass">In catalogue</div></div>
+          <div class="a-stat"><div class="asl">Orders</div><div class="asv" id="aStatOrders">â€”</div><div class="ass">All time</div></div>
+          <div class="a-stat"><div class="asl">Revenue (KES)</div><div class="asv" id="aStatRev">â€”</div><div class="ass">Paid orders</div></div>
           <div class="a-stat"><div class="asl">Supabase</div><div class="asv" id="aStatDb" style="font-size:14px;">Connecting...</div><div class="ass">Database status</div></div>
         </div>
         <!-- Products tab -->
@@ -533,23 +640,23 @@
               <!-- Rendered by JS -->
               <div class="cat-manager-card" data-cat="smartphones">
                 <div class="cmc-img"><div class="cmc-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/></svg></div></div>
-                <div class="cmc-body"><div class="cmc-name">📱 Smartphones</div><div class="cmc-url"><input class="form-input" id="catImg-smartphones" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('smartphones')">Set</button></div></div>
+                <div class="cmc-body"><div class="cmc-name">ðŸ“± Smartphones</div><div class="cmc-url"><input class="form-input" id="catImg-smartphones" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('smartphones')">Set</button></div></div>
               </div>
               <div class="cat-manager-card" data-cat="laptops">
                 <div class="cmc-img"><div class="cmc-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div></div>
-                <div class="cmc-body"><div class="cmc-name">💻 Laptops</div><div class="cmc-url"><input class="form-input" id="catImg-laptops" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('laptops')">Set</button></div></div>
+                <div class="cmc-body"><div class="cmc-name">ðŸ’» Laptops</div><div class="cmc-url"><input class="form-input" id="catImg-laptops" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('laptops')">Set</button></div></div>
               </div>
               <div class="cat-manager-card" data-cat="watches">
                 <div class="cmc-img"><div class="cmc-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/></svg></div></div>
-                <div class="cmc-body"><div class="cmc-name">⌚ Watches</div><div class="cmc-url"><input class="form-input" id="catImg-watches" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('watches')">Set</button></div></div>
+                <div class="cmc-body"><div class="cmc-name">âŒš Watches</div><div class="cmc-url"><input class="form-input" id="catImg-watches" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('watches')">Set</button></div></div>
               </div>
               <div class="cat-manager-card" data-cat="audio">
                 <div class="cmc-img"><div class="cmc-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/></svg></div></div>
-                <div class="cmc-body"><div class="cmc-name">🎧 Audio</div><div class="cmc-url"><input class="form-input" id="catImg-audio" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('audio')">Set</button></div></div>
+                <div class="cmc-body"><div class="cmc-name">ðŸŽ§ Audio</div><div class="cmc-url"><input class="form-input" id="catImg-audio" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('audio')">Set</button></div></div>
               </div>
               <div class="cat-manager-card" data-cat="tablets">
                 <div class="cmc-img"><div class="cmc-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/></svg></div></div>
-                <div class="cmc-body"><div class="cmc-name">📟 Tablets</div><div class="cmc-url"><input class="form-input" id="catImg-tablets" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('tablets')">Set</button></div></div>
+                <div class="cmc-body"><div class="cmc-name">ðŸ“Ÿ Tablets</div><div class="cmc-url"><input class="form-input" id="catImg-tablets" placeholder="Pinterest/Postimg/Google or direct image URL" style="font-size:11.5px;padding:7px 10px;"/><button onclick="applyCatImg('tablets')">Set</button></div></div>
               </div>
             </div>
           </div>
@@ -559,16 +666,32 @@
             <h4>Store Configuration</h4>
             <div class="form-grid-2">
               <div class="form-group"><label class="form-label">WhatsApp Number</label><input class="form-input" id="settingsWA" value="0705925800"/></div>
-              <div class="form-group"><label class="form-label">Store Name</label><input class="form-input" value="Life Time Limited"/></div>
+              <div class="form-group"><label class="form-label">Store Name</label><input class="form-input" id="settingsStoreName" value="Life Time Limited"/></div>
               <div class="form-group"><label class="form-label">Paystack Public Key</label><input class="form-input" value="pk_test_69283fe06fedab5b485efdae233a92be25d77c6b" readonly style="font-family:var(--font-m);font-size:12px;"/></div>
               <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" value="https://fbulitfyarmnyegxduqy.supabase.co" readonly style="font-size:12px;"/></div>
             </div>
-            <div class="form-group"><label class="form-label">Support Email</label><input class="form-input" value="support@lifetimeltd.co.ke"/></div>
+            <div class="form-group"><label class="form-label">Support Email</label><input class="form-input" id="settingsSupportEmail" value="support@lifetimeltd.co.ke"/></div>
+            <div class="branding-studio">
+              <div class="branding-title">Branding Studio</div>
+              <div class="branding-sub">Choose a preset and select additions to shape storefront branding.</div>
+              <div class="brand-presets" id="brandPresets">
+                <button type="button" class="brand-preset-btn active" data-preset="sunset" onclick="selectBrandPreset('sunset')">Sunset Orange</button>
+                <button type="button" class="brand-preset-btn" data-preset="royal" onclick="selectBrandPreset('royal')">Royal Blue</button>
+                <button type="button" class="brand-preset-btn" data-preset="emerald" onclick="selectBrandPreset('emerald')">Emerald Green</button>
+                <button type="button" class="brand-preset-btn" data-preset="carbon" onclick="selectBrandPreset('carbon')">Carbon Black</button>
+              </div>
+              <div class="brand-additions">
+                <label class="brand-addition"><input type="checkbox" id="brandAddDelivery" checked/> Fast Delivery</label>
+                <label class="brand-addition"><input type="checkbox" id="brandAddWarranty" checked/> Warranty Included</label>
+                <label class="brand-addition"><input type="checkbox" id="brandAddPayments" checked/> Secure Payments</label>
+                <label class="brand-addition"><input type="checkbox" id="brandAddSupport"/> Priority Support</label>
+              </div>
+            </div>
             <div style="background:var(--green-lt);border:1px solid #BBF7D0;border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;color:var(--green);display:flex;gap:10px;align-items:flex-start;margin-bottom:16px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;margin-top:1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span>All API keys are live and connected to Supabase. Products and orders are synced in real-time. Use the run SQL button in Supabase to execute supabase-schema.sql first if tables don't exist.</span>
             </div>
-            <button class="btn-cta blue" style="width:auto;padding:12px 24px;" onclick="toast('ok','Settings Saved','Configuration updated')">Save Settings</button>
+            <button class="btn-cta blue" style="width:auto;padding:12px 24px;" onclick="saveStoreSettings()">Save Settings</button>
           </div>
         </div>
       </div>
@@ -576,7 +699,7 @@
     <!-- ADMIN FOOTER -->
     <div class="admin-footer">
       <div class="admin-footer-left">
-        <strong>Lifetime Tech Admin</strong> · v4.0 · Connected to Supabase
+        <strong>Lifetime Tech Admin</strong> Â· v4.0 Â· Connected to Supabase
       </div>
       <div class="admin-footer-right">
         <span style="font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px;">
@@ -592,15 +715,22 @@
   </div>
 </div>
 
+<button class="admin-corner-btn" type="button" onclick="openAdmin()" aria-label="Open admin dashboard">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+  Admin
+</button>
+
 <!-- TOAST -->
 <div class="toast-wrap" id="toastWrap"></div>
 
 <!-- ============================================================
      JAVASCRIPT
      ============================================================ -->
-<script src="./assets/js/site.js"></script>
+<script src="./assets/scripts/site.js"></script>
 </body>
 </html>
+
+
 
 
 

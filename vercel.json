@@ -1,4 +1,17 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.lifetimetechnology.store"
+        }
+      ],
+      "destination": "https://lifetimetechnology.store/$1",
+      "permanent": true
+    }
+  ]
 }

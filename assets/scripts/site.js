@@ -2,10 +2,10 @@
 // CONFIG â€” All keys for testing environment
 // ============================================================
 const CFG = {
-  ENABLE_SUPABASE:  false,
+  ENABLE_SUPABASE:  true,
   SUPABASE_URL:     'https://fbulitfyarmnyegxduqy.supabase.co',
+  SUPABASE_PUBLISHABLE: 'sb_publishable_h5pygvIpbj6JaQwCiAnMSw_0MXm8Z7Q',
   SUPABASE_ANON:    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZidWxpdGZ5YXJtbnllZ3hkdXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMjE5MDAsImV4cCI6MjA4Nzc5NzkwMH0.K5UwbTYttPQeK4DTx1AO_CzPWg6IuOx4_zTbQcYEWts',
-  SUPABASE_SERVICE: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZidWxpdGZ5YXJtbnllZ3hkdXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjIyMTkwMCwiZXhwIjoyMDg3Nzk3OTAwfQ.3NctyicqSdRa8AxSt-X14Q17YRZj27TNUoAnOzw_K5M',
   PAYSTACK_PK:      'pk_test_69283fe06fedab5b485efdae233a92be25d77c6b',
   PAYSTACK_SK:      'sk_test_fd736a649e04cd256f6328ac8b45aa007e87b99f',
   WHATSAPP:         '0705925800',
@@ -91,8 +91,10 @@ function normalizeImageUrlList(rawValue) {
 // SUPABASE CLIENT
 // ============================================================
 const { createClient } = supabase;
-const sb = CFG.ENABLE_SUPABASE ? createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON) : null;
-const sbAdmin = CFG.ENABLE_SUPABASE ? createClient(CFG.SUPABASE_URL, CFG.SUPABASE_SERVICE) : null;
+const sbKey = CFG.SUPABASE_PUBLISHABLE || CFG.SUPABASE_ANON;
+const sb = (CFG.ENABLE_SUPABASE && CFG.SUPABASE_URL && sbKey) ? createClient(CFG.SUPABASE_URL, sbKey) : null;
+// Never use Supabase service-role/secret keys in browser code.
+const sbAdmin = sb;
 
 // ============================================================
 // FALLBACK PRODUCTS (shown if Supabase is empty)
@@ -133,6 +135,23 @@ const DELIVERY_ZONES = [
   {region:'North Eastern',area:'Garissa',fee:750,days:'3â€“5 days'},
 ];
 
+const BRANDING_PRESETS = {
+  sunset:  { primary: '#F97316', light: '#FFF7ED', mid: '#FED7AA' },
+  royal:   { primary: '#2563EB', light: '#EFF6FF', mid: '#BFDBFE' },
+  emerald: { primary: '#059669', light: '#ECFDF5', mid: '#A7F3D0' },
+  carbon:  { primary: '#111827', light: '#F3F4F6', mid: '#D1D5DB' },
+};
+
+const DEFAULT_BRANDING_STATE = {
+  preset: 'sunset',
+  additions: {
+    delivery: true,
+    warranty: true,
+    payments: true,
+    support: false,
+  },
+};
+
 // ============================================================
 // STATE
 // ============================================================
@@ -151,6 +170,10 @@ let deliveryFee = 0;
 let deliveryDays = '';
 let payMethod = 'paystack';
 let dbOnline = false;
+let brandingState = {
+  preset: DEFAULT_BRANDING_STATE.preset,
+  additions: { ...DEFAULT_BRANDING_STATE.additions },
+};
 
 // ============================================================
 // ICONS
@@ -162,8 +185,113 @@ function catIcon(cat) {
     watches:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/></svg>`,
     audio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>`,
     tablets:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
+    jewerlys:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 20.5 9 12 22 3.5 9 12 2"/><path d="M3.5 9h17"/></svg>`,
   };
   return m[cat] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+}
+
+const DEFAULT_CATEGORIES = ['smartphones', 'laptops', 'watches', 'audio', 'tablets', 'accessories'];
+const CATEGORY_TITLE_MAP = {
+  all: 'All Products',
+  smartphones: 'Smartphones',
+  laptops: 'Laptops',
+  watches: 'Watches & Wearables',
+  audio: 'Audio',
+  tablets: 'Tablets',
+  accessories: 'Accessories',
+  jewerlys: 'Jewerlys',
+};
+const CATEGORY_CARD_LABEL_MAP = {
+  smartphones: 'Smartphone',
+  laptops: 'Laptop',
+  watches: 'Watch',
+  audio: 'Audio',
+  tablets: 'Tablet',
+  accessories: 'Accessory',
+  jewerlys: 'Jewelry',
+};
+const HEADER_TOGGLE_CATEGORIES = ['jewerlys'];
+
+function normalizeCategoryValue(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function categoryDisplayName(cat) {
+  const slug = normalizeCategoryValue(cat);
+  if (!slug) return 'Category';
+  if (CATEGORY_TITLE_MAP[slug]) return CATEGORY_TITLE_MAP[slug].replace(' & Wearables', '');
+  return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function categoryTitle(cat) {
+  const slug = normalizeCategoryValue(cat);
+  if (CATEGORY_TITLE_MAP[slug]) return CATEGORY_TITLE_MAP[slug];
+  return categoryDisplayName(slug);
+}
+
+function cardCategoryLabel(cat) {
+  const slug = normalizeCategoryValue(cat);
+  return CATEGORY_CARD_LABEL_MAP[slug] || categoryDisplayName(slug);
+}
+
+function getAvailableCategories() {
+  const dynamic = new Set(products.map((p) => normalizeCategoryValue(p.category)).filter(Boolean));
+  const defaults = DEFAULT_CATEGORIES.filter((c) => dynamic.has(c));
+  const extras = [...dynamic].filter((c) => !DEFAULT_CATEGORIES.includes(c)).sort();
+  return [...defaults, ...extras];
+}
+
+function getAvailableBrands() {
+  return [...new Set(products.map((p) => String(p.brand || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function getAllowedFilterCategories() {
+  return ['all', ...new Set([...getAvailableCategories(), ...HEADER_TOGGLE_CATEGORIES])];
+}
+
+function getCategoryFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeCategoryValue(params.get('category') || '');
+  } catch (_) {
+    return '';
+  }
+}
+
+function getSearchQueryFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('q') || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+function syncCategoryInUrl(cat) {
+  if (!window.history || typeof window.history.replaceState !== 'function') return;
+  const normalized = normalizeCategoryValue(cat) || 'all';
+  const url = new URL(window.location.href);
+  if (normalized === 'all') url.searchParams.delete('category');
+  else url.searchParams.set('category', normalized);
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function renderCategoryChips() {
+  const wrap = document.getElementById('catChips');
+  if (!wrap) return;
+  const cats = getAvailableCategories();
+  const allChip = `
+    <a class="cat-chip ${currentCat === 'all' ? 'active' : ''}" href="/?category=all" onclick="event.preventDefault(); setCat('all')" data-f="all">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      All
+    </a>`;
+  const chips = cats.map((cat) => `<a class="cat-chip ${currentCat === cat ? 'active' : ''}" href="/?category=${encodeURIComponent(cat)}" onclick="event.preventDefault(); setCat('${cat}')" data-f="${cat}">${categoryDisplayName(cat)}</a>`).join('');
+  wrap.innerHTML = allChip + chips;
 }
 
 // ============================================================
@@ -177,7 +305,9 @@ async function loadProducts() {
     document.getElementById('aStatDb').textContent = 'Demo Mode';
     document.getElementById('aStatDb').style.color = 'var(--amber)';
     updateTopbarStats();
-    renderProducts(filterProducts(currentCat));
+    renderCategoryChips();
+    if (!getAllowedFilterCategories().includes(currentCat)) currentCat = 'all';
+    setCat(currentCat, { closeSidebar: false });
     return;
   }
   try {
@@ -200,7 +330,9 @@ async function loadProducts() {
     document.getElementById('aStatDb').style.color = 'var(--amber)';
   }
   updateTopbarStats();
-  renderProducts(filterProducts(currentCat));
+  renderCategoryChips();
+  if (!getAllowedFilterCategories().includes(currentCat)) currentCat = 'all';
+  setCat(currentCat, { closeSidebar: false });
 }
 
 async function loadAdminOrders() {
@@ -229,7 +361,7 @@ async function loadAdminOrders() {
 // ============================================================
 function filterProducts(cat) {
   if (cat === 'all') return products.filter(p => p.active !== false);
-  return products.filter(p => p.category === cat && p.active !== false);
+  return products.filter(p => normalizeCategoryValue(p.category) === cat && p.active !== false);
 }
 
 function renderProducts(list) {
@@ -238,19 +370,11 @@ function renderProducts(list) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${catIcon('accessories')}<h3>No products found</h3><p>Try a different category or check back soon</p></div>`;
     return;
   }
-  const catLabelMap = {
-    smartphones: 'Smartphone',
-    laptops: 'Laptop',
-    watches: 'Watch',
-    audio: 'Audio',
-    tablets: 'Tablet',
-    accessories: 'Accessory',
-  };
   grid.innerHTML = list.map(p => {
     const disc = p.original_price ? Math.round((1 - p.price/p.original_price)*100) : 0;
     const inWish = wishlist.includes(String(p.id));
     const img = p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" onerror="this.style.display='none'"/>` : `<div class="icon-placeholder">${catIcon(p.category)}</div>`;
-    const catLabel = catLabelMap[p.category] || 'Product';
+    const catLabel = cardCategoryLabel(p.category);
     return `<div class="p-card p-card-wide" onclick="openProduct('${p.id}')">
       <div class="p-card-img">
         ${img}
@@ -282,17 +406,29 @@ function renderProducts(list) {
   }).join('');
 }
 
-function setCat(cat) {
-  currentCat = cat;
-  document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.f === cat));
-  document.querySelectorAll('.nav-item[data-cat]').forEach(n => n.classList.toggle('active', n.dataset.cat === cat));
+function setCat(cat, opts = {}) {
+  const closeSidebar = opts.closeSidebar !== false;
+  const syncUrl = opts.syncUrl !== false;
+  currentCat = normalizeCategoryValue(cat) || 'all';
+  if (
+    !getAllowedFilterCategories().includes(currentCat)
+  ) currentCat = 'all';
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.f === currentCat));
+  document.querySelectorAll('.nav-item[data-cat]').forEach(n => n.classList.toggle('active', n.dataset.cat === currentCat));
+  const tgElectronics = document.getElementById('tgElectronics');
+  const tgJewerlys = document.getElementById('tgJewerlys');
+  if (tgElectronics && tgJewerlys) {
+    const isJewerlys = currentCat === 'jewerlys';
+    tgElectronics.classList.toggle('active', !isJewerlys);
+    tgJewerlys.classList.toggle('active', isJewerlys);
+  }
   const explore = document.querySelector('.nav-item[data-pg="explore"]');
-  if (cat === 'all') { explore.classList.add('active'); }
+  if (currentCat === 'all') { explore.classList.add('active'); }
   else { explore.classList.remove('active'); }
-  const labels = {all:'All Products',smartphones:'Smartphones',laptops:'Laptops',watches:'Watches & Wearables',audio:'Audio',tablets:'Tablets'};
-  document.getElementById('productsTitle').textContent = labels[cat] || 'Products';
-  renderProducts(filterProducts(cat));
-  closeMobileSidebar();
+  document.getElementById('productsTitle').textContent = categoryTitle(currentCat);
+  renderProducts(filterProducts(currentCat));
+  if (syncUrl) syncCategoryInUrl(currentCat);
+  if (closeSidebar) closeMobileSidebar();
 }
 
 function doSearch(q) {
@@ -891,6 +1027,7 @@ function toggleWishlist(id) {
 // ============================================================
 function openAdmin() {
   document.getElementById('adminPanel').classList.add('open');
+  document.body.classList.add('admin-open');
   if (adminAuth) { showAdminDash(); }
   else {
     document.getElementById('adminLoginScreen').style.display = 'flex';
@@ -902,6 +1039,7 @@ function openAdmin() {
 
 function closeAdmin() {
   document.getElementById('adminPanel').classList.remove('open');
+  document.body.classList.remove('admin-open');
   document.body.style.overflow = '';
 }
 
@@ -994,6 +1132,8 @@ function renderOrdersTable() {
 function openProdForm(id) {
   const p = id ? products.find(x => String(x.id) === String(id)) : null;
   const wrap = document.getElementById('prodFormWrap');
+  const categories = [...new Set([...DEFAULT_CATEGORIES, ...getAvailableCategories()])];
+  const brands = getAvailableBrands();
   wrap.style.display = 'block';
   wrap.innerHTML = `<div class="prod-form">
     <h4>${p?'Edit: '+p.name:'Add New Product'}
@@ -1001,10 +1141,8 @@ function openProdForm(id) {
     </h4>
     <div class="form-grid-3">
       <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="pf-name" value="${p?p.name:''}"/></div>
-      <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="pf-brand" value="${p?p.brand:''}"/></div>
-      <div class="form-group"><label class="form-label">Category</label>
-        <select class="form-select" id="pf-cat">${['smartphones','laptops','watches','audio','tablets','accessories'].map(c=>`<option value="${c}" ${p&&p.category===c?'selected':''}>${c}</option>`).join('')}</select>
-      </div>
+      <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="pf-brand" list="pf-brand-list" value="${p?p.brand:''}" placeholder="e.g. Samsung"/><datalist id="pf-brand-list">${brands.map((b)=>`<option value="${b}"></option>`).join('')}</datalist></div>
+      <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="pf-cat" list="pf-cat-list" value="${p?normalizeCategoryValue(p.category):''}" placeholder="e.g. smartphones"/><datalist id="pf-cat-list">${categories.map((c)=>`<option value="${c}">${categoryDisplayName(c)}</option>`).join('')}</datalist></div>
     </div>
     <div class="form-grid-3">
       <div class="form-group"><label class="form-label">Price (KES)</label><input type="number" class="form-input" id="pf-price" value="${p?p.price:''}"/></div>
@@ -1042,7 +1180,7 @@ function openProdForm(id) {
 async function saveProd(id) {
   const name  = document.getElementById('pf-name').value.trim();
   const brand = document.getElementById('pf-brand').value.trim();
-  const cat   = document.getElementById('pf-cat').value;
+  const cat   = normalizeCategoryValue(document.getElementById('pf-cat').value);
   const price = parseFloat(document.getElementById('pf-price').value);
   const orig  = parseFloat(document.getElementById('pf-orig').value) || null;
   const stock = parseInt(document.getElementById('pf-stock').value) || 0;
@@ -1050,7 +1188,7 @@ async function saveProd(id) {
   const desc  = document.getElementById('pf-desc').value.trim();
   const variants = document.getElementById('pf-variants').value.split(',').map(v=>v.trim()).filter(Boolean);
   const images   = normalizeImageUrlList(document.getElementById('pf-images').value);
-  if (!name||!brand||!price) { toast('err','Validation error','Name, brand and price required'); return; }
+  if (!name||!brand||!price||!cat) { toast('err','Validation error','Name, brand, category and price are required'); return; }
   const obj = { name, slug:name.toLowerCase().replace(/[^a-z0-9]+/g,'-'), category:cat, brand, price, original_price:orig, stock, badge, description:desc, variants, images, active:true };
   if (id) {
     const idx = products.findIndex(p => String(p.id) === String(id));
@@ -1071,7 +1209,9 @@ async function saveProd(id) {
   }
   document.getElementById('prodFormWrap').style.display = 'none';
   renderAdminProducts();
-  renderProducts(filterProducts(currentCat));
+  renderCategoryChips();
+  if (!getAllowedFilterCategories().includes(currentCat)) currentCat = 'all';
+  setCat(currentCat, { closeSidebar: false });
 }
 
 async function toggleActive(id) {
@@ -1082,7 +1222,9 @@ async function toggleActive(id) {
     try { await sbAdmin.from('products').update({active:p.active}).eq('id', id); } catch(e) {}
   }
   renderAdminProducts();
-  renderProducts(filterProducts(currentCat));
+  renderCategoryChips();
+  if (!getAllowedFilterCategories().includes(currentCat)) currentCat = 'all';
+  setCat(currentCat, { closeSidebar: false });
   toast('inf', p.active ? 'Product Activated' : 'Product Hidden', p.name);
 }
 
@@ -1094,7 +1236,9 @@ async function deleteProduct(id) {
     try { await sbAdmin.from('products').delete().eq('id', id); } catch(e) {}
   }
   renderAdminProducts();
-  renderProducts(filterProducts(currentCat));
+  renderCategoryChips();
+  if (!getAllowedFilterCategories().includes(currentCat)) currentCat = 'all';
+  setCat(currentCat, { closeSidebar: false });
   toast('err','Deleted', p.name);
 }
 
@@ -1117,10 +1261,13 @@ function navigate(page, cat) {
 }
 
 function topbarToggle(mode) {
-  document.getElementById('tgDash').classList.toggle('active', mode==='dash');
-  document.getElementById('tgSite').classList.toggle('active', mode==='site');
-  if (mode === 'site') navigate('explore');
-  if (mode === 'dash') openAdmin();
+  const tgElectronics = document.getElementById('tgElectronics');
+  const tgJewerlys = document.getElementById('tgJewerlys');
+  if (tgElectronics) tgElectronics.classList.toggle('active', mode === 'electronics');
+  if (tgJewerlys) tgJewerlys.classList.toggle('active', mode === 'jewerlys');
+  navigate('explore');
+  if (mode === 'jewerlys') setCat('jewerlys', { closeSidebar: false });
+  else setCat('all', { closeSidebar: false });
 }
 
 // ============================================================
@@ -1180,10 +1327,22 @@ window.addEventListener('resize', () => {
 // INIT
 // ============================================================
 (async function init() {
+  const initialCategory = getCategoryFromUrl();
+  if (initialCategory) currentCat = initialCategory;
+  const initialQuery = getSearchQueryFromUrl();
+
   loadSidebarState();
+  loadStoreSettings();
+  loadBrandingSettings();
   updateCartUI();
   updateTopbarStats();
   await loadProducts();
+
+  if (initialQuery) {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = initialQuery;
+    doSearch(initialQuery);
+  }
 })();
 
 // ===== THEME SWITCHER =====
@@ -1221,6 +1380,146 @@ function toggleTheme() {
     }, 50);
   }
 })();
+
+function getBrandingAdditionsFromControls() {
+  return {
+    delivery: !!document.getElementById('brandAddDelivery')?.checked,
+    warranty: !!document.getElementById('brandAddWarranty')?.checked,
+    payments: !!document.getElementById('brandAddPayments')?.checked,
+    support: !!document.getElementById('brandAddSupport')?.checked,
+  };
+}
+
+function normalizeBrandingState(raw) {
+  const normalized = {
+    preset: DEFAULT_BRANDING_STATE.preset,
+    additions: { ...DEFAULT_BRANDING_STATE.additions },
+  };
+  if (raw && typeof raw === 'object') {
+    if (raw.preset && BRANDING_PRESETS[raw.preset]) normalized.preset = raw.preset;
+    if (raw.additions && typeof raw.additions === 'object') {
+      Object.keys(normalized.additions).forEach((k) => {
+        if (typeof raw.additions[k] === 'boolean') normalized.additions[k] = raw.additions[k];
+      });
+    }
+  }
+  return normalized;
+}
+
+function applyBrandPreset(presetId) {
+  const palette = BRANDING_PRESETS[presetId] || BRANDING_PRESETS[DEFAULT_BRANDING_STATE.preset];
+  const root = document.getElementById('appRoot') || document.documentElement;
+  root.style.setProperty('--primary', palette.primary);
+  root.style.setProperty('--primary-lt', palette.light);
+  root.style.setProperty('--primary-md', palette.mid);
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute('content', palette.primary);
+}
+
+function renderBrandSignals(additions) {
+  const wrap = document.getElementById('brandSignals');
+  if (!wrap) return;
+  const labels = [];
+  if (additions.delivery) labels.push('Fast Delivery');
+  if (additions.warranty) labels.push('Warranty Included');
+  if (additions.payments) labels.push('Secure Payments');
+  if (additions.support) labels.push('Priority Support');
+  wrap.innerHTML = labels.map((label) => `<span class="sf-signal">${label}</span>`).join('');
+}
+
+function syncBrandingControls(state) {
+  document.querySelectorAll('.brand-preset-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.preset === state.preset);
+  });
+  const d = state.additions;
+  const m = {
+    brandAddDelivery: d.delivery,
+    brandAddWarranty: d.warranty,
+    brandAddPayments: d.payments,
+    brandAddSupport: d.support,
+  };
+  Object.entries(m).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = value;
+  });
+}
+
+function applyBrandingState(nextState, persist = false, syncControls = true) {
+  brandingState = normalizeBrandingState(nextState);
+  applyBrandPreset(brandingState.preset);
+  renderBrandSignals(brandingState.additions);
+  if (syncControls) syncBrandingControls(brandingState);
+  if (persist) localStorage.setItem('ltl2_branding', JSON.stringify(brandingState));
+}
+
+function previewBrandingFromControls() {
+  const activePreset = document.querySelector('.brand-preset-btn.active')?.dataset.preset || brandingState.preset;
+  applyBrandingState({ preset: activePreset, additions: getBrandingAdditionsFromControls() }, false, false);
+}
+
+function selectBrandPreset(presetId) {
+  if (!BRANDING_PRESETS[presetId]) return;
+  document.querySelectorAll('.brand-preset-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.preset === presetId);
+  });
+  previewBrandingFromControls();
+}
+
+function loadBrandingSettings() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ltl2_branding') || 'null'); } catch (_) {}
+  applyBrandingState(saved || DEFAULT_BRANDING_STATE, false, true);
+  ['brandAddDelivery', 'brandAddWarranty', 'brandAddPayments', 'brandAddSupport'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.bound) {
+      el.addEventListener('change', previewBrandingFromControls);
+      el.dataset.bound = '1';
+    }
+  });
+}
+
+function applyStoreName(name) {
+  const clean = String(name || '').trim() || 'Life Time Limited';
+  const footerName = document.querySelector('.sf-bottom-left strong');
+  if (footerName) footerName.textContent = clean;
+  const adminName = document.querySelector('.admin-footer-left strong');
+  if (adminName) adminName.textContent = `${clean} Admin`;
+}
+
+function loadStoreSettings() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ltl2_store_settings') || 'null'); } catch (_) {}
+  if (!saved || typeof saved !== 'object') return;
+  const wa = document.getElementById('settingsWA');
+  const sn = document.getElementById('settingsStoreName');
+  const se = document.getElementById('settingsSupportEmail');
+  if (wa && saved.whatsapp) wa.value = saved.whatsapp;
+  if (sn && saved.storeName) sn.value = saved.storeName;
+  if (se && saved.supportEmail) se.value = saved.supportEmail;
+  if (saved.whatsapp) CFG.WHATSAPP = String(saved.whatsapp).trim();
+  applyStoreName(saved.storeName || 'Life Time Limited');
+}
+
+function applyBrandingSettings(showToast = true) {
+  const activePreset = document.querySelector('.brand-preset-btn.active')?.dataset.preset || DEFAULT_BRANDING_STATE.preset;
+  applyBrandingState({ preset: activePreset, additions: getBrandingAdditionsFromControls() }, true, false);
+  if (showToast) toast('ok', 'Branding Applied', 'Preset and additions updated');
+}
+
+function saveStoreSettings() {
+  const wa = document.getElementById('settingsWA')?.value?.trim() || CFG.WHATSAPP;
+  const storeName = document.getElementById('settingsStoreName')?.value?.trim() || 'Life Time Limited';
+  const supportEmail = document.getElementById('settingsSupportEmail')?.value?.trim() || 'support@lifetimeltd.co.ke';
+  CFG.WHATSAPP = wa;
+  applyStoreName(storeName);
+  applyBrandingSettings(false);
+  localStorage.setItem('ltl2_store_settings', JSON.stringify({
+    whatsapp: wa,
+    storeName,
+    supportEmail,
+  }));
+  toast('ok', 'Settings Saved', 'Branding presets and additions updated');
+}
 
 // ===== BANNER IMAGE MANAGER =====
 function applyBannerImg(slot) {

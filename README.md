@@ -5,8 +5,11 @@ Clean static website setup for easy deployment to Vercel.
 ## Project Structure
 
 - `index.html` - Main page markup
-- `assets/css/site.css` - All styles
-- `assets/js/site.js` - All frontend logic
+- `assets/styles/site.css` - All styles
+- `assets/scripts/site.js` - All frontend logic
+- `assets/images/` - Brand assets and icons
+- `robots.txt` - Search engine crawl rules
+- `sitemap.xml` - Primary sitemap for production domain
 - `vercel.json` - Vercel config
 
 ## Run Locally
@@ -25,4 +28,5 @@ Then open:
 2. Framework preset: `Other`.
 3. Build command: *(leave empty)*.
 4. Output directory: *(leave empty / root)*.
-
+5. Add custom domain: `lifetimetechnology.store`.
+6. Add alias domain: `www.lifetimetechnology.store` (redirects to apex domain via `vercel.json`).
