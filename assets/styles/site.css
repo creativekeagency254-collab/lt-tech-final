@@ -1871,3 +1871,137 @@ body.hide-site-footer #siteFooter {
 .image-marquee-center {
   display: none !important;
 }
+
+/* ===================== CRISP UI POLISH ===================== */
+.app-outer {
+  background: #f6f7fb;
+}
+
+.topbar {
+  border-radius: 14px;
+  border-color: #e6e8ef;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar {
+  border-right-color: #e6e8ef;
+}
+
+.nav-item {
+  border-radius: 10px;
+}
+
+.nav-item.active {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.cat-chip,
+.filter-btn {
+  border-color: #e5e7eb;
+  font-weight: 600;
+}
+
+.cat-chip.active {
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
+}
+
+.explore-grid .hero-banner-img,
+.explore-grid .promo-img-card {
+  border: 1px solid #e5e7eb;
+}
+
+.section-row h3 {
+  letter-spacing: -0.2px;
+}
+
+.p-card {
+  border-radius: 14px;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.05);
+}
+
+.p-card:hover {
+  transform: translateY(-1px);
+  border-color: #fdba74;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.11);
+}
+
+.p-card-name {
+  letter-spacing: -0.15px;
+}
+
+.p-card-add {
+  border-radius: 10px;
+}
+
+.detail-layout,
+.checkout-body {
+  align-items: start;
+}
+
+.table-wrap,
+.prod-form,
+.ck-main,
+.ck-summary,
+.order-detail-card {
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  border-color: #dfe3ea;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.16);
+}
+
+.btn-cta.blue {
+  box-shadow: 0 6px 14px rgba(249, 115, 22, 0.28);
+}
+
+.btn-cta.blue:hover {
+  box-shadow: 0 8px 18px rgba(234, 108, 10, 0.34);
+}
+
+.icon-btn,
+.wish-btn,
+.tbl-btn,
+.cd-remove,
+.cd-close {
+  border: 1px solid #e5e7eb;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.cat-chip:focus-visible,
+.nav-item:focus-visible,
+.icon-btn:focus-visible,
+.tbl-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18);
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    margin: 10px 10px 0;
+    border-radius: 12px;
+  }
+
+  .page {
+    padding: 20px 14px 22px;
+  }
+
+  .p-card {
+    border-radius: 12px;
+  }
+}
