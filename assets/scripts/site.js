@@ -11,6 +11,8 @@ const CFG = {
   ADMIN_EMAIL:      'admin@gmail.com',
   ADMIN_PASS:       'Mmm@29315122',
 };
+const SUPABASE_PROJECT_REF = 'fbulitfyarmnyegxduqy';
+const SUPABASE_SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/sql/new`;
 
 function normalizeWhatsAppNumber(rawNumber) {
   const digits = String(rawNumber || '').replace(/\D/g, '');
@@ -230,6 +232,11 @@ let currentPage = 'explore';
 let activeSearchQuery = '';
 let displayedProducts = [];
 let likedViewActive = false;
+let supabaseHealth = {
+  productsTable: false,
+  ordersTable: false,
+  schemaMissing: false,
+};
 let brandingState = {
   preset: DEFAULT_BRANDING_STATE.preset,
   additions: { ...DEFAULT_BRANDING_STATE.additions },
@@ -240,6 +247,39 @@ function setDbStatus(label, color) {
   if (!el) return;
   el.textContent = label;
   if (color) el.style.color = color;
+}
+
+function updateSupabaseSetupUi(message = '') {
+  const msg = document.getElementById('supabaseSetupMsg');
+  const seedBtn = document.getElementById('btnSeedSupabaseProducts');
+  const applyBtn = document.getElementById('btnOpenSupabaseEditor');
+  const copyBtn = document.getElementById('btnCopySupabaseSchema');
+  const checkBtn = document.getElementById('btnCheckSupabaseSchema');
+  if (!msg) return;
+
+  if (!canUseSupabase()) {
+    msg.textContent = 'Supabase client unavailable. Check URL/key configuration first.';
+    if (seedBtn) seedBtn.disabled = true;
+    if (applyBtn) applyBtn.disabled = false;
+    if (copyBtn) copyBtn.disabled = false;
+    if (checkBtn) checkBtn.disabled = true;
+    return;
+  }
+
+  if (message) {
+    msg.textContent = message;
+  } else if (supabaseHealth.schemaMissing) {
+    msg.textContent = 'Schema missing in Supabase. Open SQL Editor, run supabase-schema.sql, then recheck.';
+  } else if (supabaseHealth.productsTable && supabaseHealth.ordersTable) {
+    msg.textContent = 'Schema looks ready. You can seed products if your catalog is still empty.';
+  } else {
+    msg.textContent = 'Checking schema health...';
+  }
+
+  if (seedBtn) seedBtn.disabled = !!supabaseHealth.schemaMissing;
+  if (applyBtn) applyBtn.disabled = false;
+  if (copyBtn) copyBtn.disabled = false;
+  if (checkBtn) checkBtn.disabled = false;
 }
 
 function canUseSupabase() {
@@ -331,11 +371,19 @@ async function runSupabaseWrite(factoryFn, options = {}) {
     await runDbWithRetry(factoryFn, { retries: 1, baseDelayMs: 250 });
     setDbStatus('Connected', 'var(--green)');
     dbOnline = true;
+    if (supabaseHealth.schemaMissing) {
+      supabaseHealth = { productsTable: true, ordersTable: true, schemaMissing: false };
+      updateSupabaseSetupUi('Schema appears ready. You can continue syncing data.');
+    }
     return true;
   } catch (error) {
     console.warn('Supabase write failed:', error?.message || error);
     const schemaMissing = isSchemaMissingError(error);
     setDbStatus(schemaMissing ? 'Schema Missing' : 'Sync Issue', schemaMissing ? 'var(--red)' : 'var(--amber)');
+    if (schemaMissing) {
+      supabaseHealth = { productsTable: false, ordersTable: false, schemaMissing: true };
+      updateSupabaseSetupUi('Schema missing in Supabase. Run supabase-schema.sql, then recheck.');
+    }
     dbOnline = false;
     if (!silent) {
       const message = schemaMissing
@@ -344,6 +392,136 @@ async function runSupabaseWrite(factoryFn, options = {}) {
       toast('inf', schemaMissing ? 'Supabase Schema Missing' : 'Supabase Sync Issue', message);
     }
     return false;
+  }
+}
+
+async function checkSupabaseHealth(showToast = false) {
+  if (!canUseSupabase()) {
+    supabaseHealth = { productsTable: false, ordersTable: false, schemaMissing: true };
+    updateSupabaseSetupUi('Supabase client unavailable. Check URL/key and internet connection.');
+    if (showToast) toast('err', 'Supabase Not Ready', 'Client is not initialized.');
+    return supabaseHealth;
+  }
+
+  let productsTable = false;
+  let ordersTable = false;
+  let schemaMissing = false;
+  let lastError = null;
+
+  try {
+    const { error } = await sb.from('products').select('id').limit(1);
+    if (error) throw error;
+    productsTable = true;
+  } catch (error) {
+    lastError = error;
+    if (isSchemaMissingError(error)) schemaMissing = true;
+  }
+
+  try {
+    const { error } = await sb.from('orders').select('id').limit(1);
+    if (error) throw error;
+    ordersTable = true;
+  } catch (error) {
+    lastError = error;
+    if (isSchemaMissingError(error)) schemaMissing = true;
+  }
+
+  supabaseHealth = { productsTable, ordersTable, schemaMissing };
+
+  if (schemaMissing) {
+    setDbStatus('Schema Missing', 'var(--red)');
+    updateSupabaseSetupUi('Schema missing in Supabase. Run supabase-schema.sql, then click Recheck Schema.');
+    if (showToast) toast('err', 'Supabase Schema Missing', 'Open SQL Editor, run supabase-schema.sql, then Recheck.');
+  } else if (productsTable && ordersTable) {
+    setDbStatus('Connected', 'var(--green)');
+    updateSupabaseSetupUi('Schema is ready. You can now sync and seed products.');
+    if (showToast) toast('ok', 'Supabase Ready', 'Products and orders tables are available.');
+  } else {
+    setDbStatus('Sync Issue', 'var(--amber)');
+    updateSupabaseSetupUi('Could not confirm schema health. Check network and permissions.');
+    if (showToast) {
+      const msg = String(lastError?.message || 'Unknown schema check issue');
+      toast('inf', 'Supabase Check Incomplete', msg);
+    }
+  }
+
+  return supabaseHealth;
+}
+
+function openSupabaseSqlEditor() {
+  window.open(SUPABASE_SQL_EDITOR_URL, '_blank');
+}
+
+async function copySupabaseSchemaSql() {
+  try {
+    const res = await fetch('./supabase-schema.sql', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Could not read supabase-schema.sql');
+    const sql = await res.text();
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(sql);
+      toast('ok', 'Schema Copied', 'Paste into Supabase SQL Editor and run.');
+    } else {
+      toast('inf', 'Clipboard Unavailable', 'Open supabase-schema.sql in this repo and copy manually.');
+    }
+  } catch (error) {
+    toast('err', 'Copy Failed', error?.message || 'Could not copy schema SQL.');
+  }
+}
+
+function mapFallbackToSupabaseProduct(product) {
+  return {
+    name: product.name,
+    slug: product.slug || String(product.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+    category: normalizeCategoryValue(product.category) || 'accessories',
+    brand: product.brand || 'Unknown',
+    price: Number(product.price || 0),
+    original_price: product.original_price ? Number(product.original_price) : null,
+    stock: Number.isFinite(Number(product.stock)) ? Number(product.stock) : 0,
+    badge: product.badge || null,
+    description: product.description || '',
+    variants: Array.isArray(product.variants) ? product.variants : [],
+    images: Array.isArray(product.images) ? product.images : [],
+    specs: product.specs && typeof product.specs === 'object' ? product.specs : {},
+    sku: product.sku || null,
+    tagline: product.tagline || null,
+    highlights: Array.isArray(product.highlights) ? product.highlights : [],
+    active: product.active !== false,
+  };
+}
+
+async function seedSupabaseProducts() {
+  if (!canUseSupabase()) {
+    toast('err', 'Supabase Not Ready', 'Client is not initialized.');
+    return;
+  }
+  const health = await checkSupabaseHealth(false);
+  if (health.schemaMissing) {
+    toast('err', 'Schema Missing', 'Run supabase-schema.sql first, then seed products.');
+    return;
+  }
+
+  let count = 0;
+  try {
+    const { count: c, error } = await sb.from('products').select('id', { head: true, count: 'exact' });
+    if (error) throw error;
+    count = Number(c || 0);
+  } catch (error) {
+    toast('err', 'Count Failed', error?.message || 'Could not count products.');
+    return;
+  }
+
+  if (count > 0 && !confirm(`Supabase already has ${count} products. Continue seeding with upsert by slug?`)) return;
+
+  const payload = FALLBACK_PRODUCTS.map(mapFallbackToSupabaseProduct);
+  try {
+    const { error } = await sbAdmin.from('products').upsert(payload, { onConflict: 'slug' });
+    if (error) throw error;
+    toast('ok', 'Seed Completed', `${payload.length} products synced to Supabase.`);
+    await loadProducts();
+    if (adminAuth) renderAdminProducts();
+    await checkSupabaseHealth(false);
+  } catch (error) {
+    toast('err', 'Seed Failed', error?.message || 'Could not seed products.');
   }
 }
 
@@ -1804,6 +1982,7 @@ function showAdminDash() {
   setAdminCatalogMode(adminCatalogMode, { rerenderProducts: false, rerenderSettings: true });
   updateAdminStats();
   adminTab('products');
+  checkSupabaseHealth(false);
 }
 
 function isProductInAdminMode(product, mode = adminCatalogMode) {
@@ -2240,6 +2419,7 @@ window.addEventListener('resize', () => {
     setDbStatus('Reconnecting...', 'var(--primary)');
     loadProducts();
     if (adminAuth) loadAdminOrders();
+    checkSupabaseHealth(false);
   });
 })();
 
@@ -2254,6 +2434,7 @@ window.addEventListener('resize', () => {
   setStorefrontMode(storefrontMode, { preserveCategory: true });
   loadStoreSettings();
   loadBrandingSettings();
+  updateSupabaseSetupUi('Checking schema health...');
   if (CFG.ENABLE_SUPABASE && !sb) {
     setDbStatus('Config Issue', 'var(--red)');
     toast('inf', 'Supabase Not Ready', 'Using local/demo data until Supabase client is available.');
@@ -2262,6 +2443,7 @@ window.addEventListener('resize', () => {
   updateWishlistBadge();
   updateTopbarStats();
   await loadProducts();
+  await checkSupabaseHealth(false);
 
   if (initialProductSlug) {
     const match = products.find((p) => String(p.slug || '').toLowerCase() === initialProductSlug || String(p.id || '').toLowerCase() === initialProductSlug);

@@ -29,6 +29,14 @@ Then open:
 2. Run the SQL from `supabase-schema.sql`.
 3. Refresh the website/admin dashboard.
 
+If dashboard shows `Schema Missing`:
+
+1. Open Admin -> `Settings & Images`.
+2. In `Supabase Setup Wizard`, click `Copy Schema SQL`.
+3. Click `Open SQL Editor`, paste and run.
+4. Return to admin and click `Recheck Schema`.
+5. Optional: click `Seed Products` to load the starter catalog into Supabase.
+
 ## Deploy to Vercel
 
 1. Import this folder/repo into Vercel.
