@@ -2854,3 +2854,45 @@ textarea:focus-visible,
     min-height: 220px;
   }
 }
+
+/* Mobile header: keep Electronics/Jewelry visible and left-align search controls */
+@media (max-width: 900px) {
+  .topbar {
+    height: auto;
+    min-height: 60px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .topbar-toggle-group {
+    display: flex !important;
+    width: 100%;
+    margin-left: 0;
+    order: 5;
+  }
+
+  .tg-btn {
+    flex: 1;
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .search-wrap {
+    order: 3;
+    margin-left: 0;
+    max-width: none;
+    flex: 1 1 170px;
+  }
+
+  .topbar-actions {
+    order: 4;
+    margin-left: 0;
+  }
+
+  .search-icon {
+    left: 12px;
+  }
+}

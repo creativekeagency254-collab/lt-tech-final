@@ -2130,17 +2130,7 @@ function setCat(cat, opts = {}) {
   if (!getAllowedFilterCategories().includes(currentCat)) currentCat = storefrontMode === 'jewerlys' ? 'jewerlys' : 'all';
   if (storefrontMode === 'jewerlys' && !isJewelryCategory(currentCat)) currentCat = 'jewerlys';
   if (storefrontMode === 'electronics' && isJewelryCategory(currentCat)) currentCat = 'all';
-  let filteredProducts = filterProducts(currentCat);
-  if (!filteredProducts.length && !activeSearchQuery) {
-    const fallbackCat = storefrontMode === 'jewerlys' ? 'jewerlys' : 'all';
-    if (currentCat !== fallbackCat) {
-      const fallbackProducts = filterProducts(fallbackCat);
-      if (fallbackProducts.length) {
-        currentCat = fallbackCat;
-        filteredProducts = fallbackProducts;
-      }
-    }
-  }
+  const filteredProducts = filterProducts(currentCat);
   document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.f === currentCat));
   document.querySelectorAll('.nav-item[data-cat]').forEach(n => n.classList.toggle('active', n.dataset.cat === currentCat));
   setStorefrontMode(storefrontMode, { preserveCategory: false });
@@ -3377,7 +3367,7 @@ function openProdForm(id) {
     <div class="form-grid-3">
       <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="pf-name" value="${escapeHtml(p?p.name:'')}"/></div>
       <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="pf-brand" list="pf-brand-list" value="${escapeHtml(p?p.brand:'')}" placeholder="e.g. Samsung"/><datalist id="pf-brand-list">${brands.map((b)=>`<option value="${escapeHtml(b)}"></option>`).join('')}</datalist></div>
-      <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="pf-cat" list="pf-cat-list" value="${selectedCat}" placeholder="${adminCatalogMode === 'jewerlys' ? 'e.g. jewelry-necklaces' : 'e.g. smartphones'}"/><datalist id="pf-cat-list">${categories.map((c)=>`<option value="${c}">${categoryDisplayName(c)}</option>`).join('')}</datalist></div>
+      <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="pf-cat">${categories.map((c)=>`<option value="${escapeHtml(c)}" ${c===selectedCat?'selected':''}>${escapeHtml(categoryDisplayName(c))}</option>`).join('')}</select></div>
     </div>
     <div class="form-grid-3">
       <div class="form-group"><label class="form-label">Price (KES)</label><input type="number" class="form-input" id="pf-price" value="${p?p.price:''}"/></div>
@@ -4182,7 +4172,15 @@ function renderImageMarquee(mode = storefrontMode) {
     return;
   }
   const repeatedUrls = [...sourceUrls, ...sourceUrls];
-  const iconCats = MARQUEE_ICON_CATEGORIES[scope] || MARQUEE_ICON_CATEGORIES.electronics;
+  const activeCat = normalizeCategoryValue(currentCat);
+  const lockToActiveCategory =
+    activeCat &&
+    activeCat !== 'all' &&
+    activeCat !== 'jewerlys' &&
+    (scope === 'jewerlys' ? isJewelryCategory(activeCat) : !isJewelryCategory(activeCat));
+  const iconCats = lockToActiveCategory
+    ? [activeCat]
+    : (MARQUEE_ICON_CATEGORIES[scope] || MARQUEE_ICON_CATEGORIES.electronics);
   const scopeLabel = scope === 'jewerlys' ? 'Jewelry' : 'Electronics';
   track.innerHTML = repeatedUrls.map((url, index) => {
     const cat = iconCats[index % iconCats.length];
