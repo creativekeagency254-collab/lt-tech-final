@@ -191,6 +191,113 @@ function splitListValues(rawValue) {
     .filter(Boolean);
 }
 
+function parsePossibleJson(rawValue) {
+  const text = String(rawValue || '').trim();
+  if (!text) return null;
+  if (!((text.startsWith('[') && text.endsWith(']')) || (text.startsWith('{') && text.endsWith('}')))) return null;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeHexColor(rawValue) {
+  const value = String(rawValue || '').trim();
+  if (!value) return '';
+  const hex = value.startsWith('#') ? value : `#${value}`;
+  if (/^#([0-9a-fA-F]{3})$/.test(hex)) {
+    const short = hex.slice(1).toLowerCase();
+    return `#${short[0]}${short[0]}${short[1]}${short[1]}${short[2]}${short[2]}`;
+  }
+  if (/^#([0-9a-fA-F]{6})$/.test(hex)) return hex.toLowerCase();
+  return '';
+}
+
+function parseVariantToken(rawToken) {
+  const token = String(rawToken || '').trim();
+  if (!token) return null;
+  let label = token;
+  let color = '';
+
+  if (token.includes('|')) {
+    const [namePart, colorPart] = token.split('|');
+    label = String(namePart || '').trim();
+    color = normalizeHexColor(colorPart);
+  } else {
+    const match = token.match(/^(.*?)(?:\s*[-(]\s*(#[0-9a-fA-F]{3,6})\s*\)?)$/);
+    if (match) {
+      label = String(match[1] || '').trim();
+      color = normalizeHexColor(match[2]);
+    }
+  }
+
+  if (!label) return null;
+  return { label, color };
+}
+
+function normalizeVariantEntries(rawVariants) {
+  let source = [];
+  if (Array.isArray(rawVariants)) {
+    source = rawVariants;
+  } else if (rawVariants && typeof rawVariants === 'object') {
+    source = [rawVariants];
+  } else {
+    const parsed = parsePossibleJson(rawVariants);
+    if (Array.isArray(parsed)) source = parsed;
+    else if (parsed && typeof parsed === 'object') source = [parsed];
+    else source = splitListValues(rawVariants);
+  }
+  const normalized = [];
+  const seen = new Set();
+  source.forEach((item) => {
+    let parsed = null;
+    if (item && typeof item === 'object') {
+      const rawLabel = item.label || item.name || item.value || item.variant || '';
+      const rawColor = item.color || item.hex || item.colour || '';
+      parsed = parseVariantToken(`${rawLabel}${rawColor ? `|${rawColor}` : ''}`);
+    } else {
+      parsed = parseVariantToken(item);
+    }
+    if (!parsed) return;
+    const key = parsed.label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    normalized.push(parsed);
+  });
+  return normalized;
+}
+
+function getVariantLabel(variant) {
+  if (variant && typeof variant === 'object') return String(variant.label || variant.name || '').trim();
+  return String(variant || '').trim();
+}
+
+function getVariantColor(variant) {
+  if (!variant || typeof variant !== 'object') return '';
+  return normalizeHexColor(variant.color || variant.hex || '');
+}
+
+function variantEntriesFromProduct(product) {
+  return normalizeVariantEntries(product?.variants || []);
+}
+
+function variantsToEditorText(rawVariants) {
+  return normalizeVariantEntries(rawVariants)
+    .map((entry) => (entry.color ? `${entry.label} | ${entry.color}` : entry.label))
+    .join('\n');
+}
+
+function escapeJsSingleQuote(value) {
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -654,6 +761,9 @@ async function copySupabaseSchemaSql() {
 }
 
 function mapFallbackToSupabaseProduct(product) {
+  const variants = normalizeVariantEntries(product.variants).map((entry) => (
+    entry.color ? { label: entry.label, color: entry.color } : { label: entry.label }
+  ));
   return {
     name: product.name,
     slug: product.slug || String(product.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
@@ -664,7 +774,7 @@ function mapFallbackToSupabaseProduct(product) {
     stock: Number.isFinite(Number(product.stock)) ? Number(product.stock) : 0,
     badge: product.badge || null,
     description: product.description || '',
-    variants: Array.isArray(product.variants) ? product.variants : [],
+    variants,
     images: Array.isArray(product.images) ? product.images : [],
     specs: product.specs && typeof product.specs === 'object' ? product.specs : {},
     sku: product.sku || null,
@@ -1945,7 +2055,8 @@ function openProduct(id) {
   currentProduct = products.find(p => String(p.id) === String(id));
   if (!currentProduct) return;
   likedViewActive = false;
-  selectedVariant = currentProduct.variants && currentProduct.variants.length ? currentProduct.variants[0] : null;
+  const variantEntries = variantEntriesFromProduct(currentProduct);
+  selectedVariant = variantEntries.length ? variantEntries[0].label : null;
   detailQty = 1;
   navigate('detail');
   renderDetailGallery(currentProduct);
@@ -1987,10 +2098,16 @@ function renderDetailInfo(p) {
       ? `<ul class="d-highlights">${highlights.slice(0, 4).map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>`
       : ''
   }`;
-  const variantsHTML = p.variants && p.variants.length ? `
+  const variantEntries = variantEntriesFromProduct(p);
+  const variantsHTML = variantEntries.length ? `
     <div class="d-label">Variant / Colour</div>
     <div class="d-variants" id="variantRow">
-      ${p.variants.map(v => `<button class="v-btn ${v===selectedVariant?'active':''}" onclick="selectVariant('${v}',this)">${v}</button>`).join('')}
+      ${variantEntries.map((entry) => `
+        <button class="v-btn ${entry.label===selectedVariant?'active':''} ${entry.color ? 'has-color' : ''}" onclick="selectVariant('${escapeJsSingleQuote(entry.label)}',this)" ${entry.color ? `style="--v-color:${entry.color}"` : ''}>
+          ${entry.color ? '<span class="v-swatch" aria-hidden="true"></span>' : ''}
+          ${escapeHtml(entry.label)}
+        </button>
+      `).join('')}
     </div>` : '';
   document.getElementById('detailInfo').innerHTML = `
     <div class="d-brand">${p.brand} · ${p.category.toUpperCase()}</div>
@@ -2067,24 +2184,29 @@ function changeDetailQty(d) {
 // ============================================================
 // CART
 // ============================================================
-function cartKey(id, variant) { return id + '::' + (variant||'default'); }
+function cartKey(id, variant) {
+  const variantLabel = getVariantLabel(variant);
+  return id + '::' + (variantLabel || 'default');
+}
 function cartTotal() { return cart.reduce((s,i) => s + i.price * i.qty, 0); }
 function cartCount() { return cart.reduce((s,i) => s + i.qty, 0); }
 
 function addToCart(product, qty, variant) {
-  const key = cartKey(product.id, variant);
+  const variantLabel = getVariantLabel(variant) || null;
+  const key = cartKey(product.id, variantLabel);
   const ex = cart.find(i => i.key === key);
   if (ex) { ex.qty = Math.min(product.stock||99, ex.qty + qty); }
-  else { cart.push({ key, productId:product.id, name:product.name, brand:product.brand, price:Number(product.price), variant:variant||null, qty, image:product.images?.[0]||null, category:product.category }); }
+  else { cart.push({ key, productId:product.id, name:product.name, brand:product.brand, price:Number(product.price), variant:variantLabel, qty, image:product.images?.[0]||null, category:product.category }); }
   localStorage.setItem('ltl2_cart', JSON.stringify(cart));
   updateCartUI();
-  toast('ok', 'Added to Basket', `${product.name}${variant?' · '+variant:''}`);
+  toast('ok', 'Added to Basket', `${product.name}${variantLabel?' · '+variantLabel:''}`);
 }
 
 function quickAdd(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
-  addToCart(p, 1, p.variants?.[0]||null);
+  const firstVariant = variantEntriesFromProduct(p)[0]?.label || null;
+  addToCart(p, 1, firstVariant);
 }
 
 function addToCartDetail() {
@@ -2150,7 +2272,7 @@ function renderCartDrawer() {
       </div>
       <div class="cd-item-info">
         <div class="cd-item-name">${item.name}</div>
-        <div class="cd-item-variant">${item.brand}${item.variant?' · '+item.variant:''}</div>
+        <div class="cd-item-variant">${item.brand}${getVariantLabel(item.variant)?' · '+getVariantLabel(item.variant):''}</div>
         <div class="cd-qty-row">
           <div class="cq-btn" onclick="updateCartItemQty('${item.key}',-1)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:11px;height:11px"><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2244,7 +2366,7 @@ function renderCkStep() {
           <div class="cd-item-img">${item.image?`<img src="${item.image}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"/>`:catIcon(item.category)}</div>
           <div class="cd-item-info">
             <div class="cd-item-name">${item.name}</div>
-            <div class="cd-item-variant">${item.brand}${item.variant?' · '+item.variant:''} · Qty ${item.qty}</div>
+            <div class="cd-item-variant">${item.brand}${getVariantLabel(item.variant)?' · '+getVariantLabel(item.variant):''} · Qty ${item.qty}</div>
           </div>
           <div class="cd-item-price" style="font-family:var(--font-m);font-size:13px;font-weight:700;">KES ${(item.price*item.qty).toLocaleString()}</div>
         </div>`).join('')}
@@ -2356,7 +2478,7 @@ function renderCkSummary() {
     ${cart.map(i=>`
       <div class="ck-item">
         <div class="ck-item-img">${i.image?`<img src="${i.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:catIcon(i.category)}</div>
-        <div class="ck-item-info"><div class="ck-item-name">${i.name}</div><div class="ck-item-meta">${i.brand}${i.variant?' · '+i.variant:''} × ${i.qty}</div></div>
+        <div class="ck-item-info"><div class="ck-item-name">${i.name}</div><div class="ck-item-meta">${i.brand}${getVariantLabel(i.variant)?' · '+getVariantLabel(i.variant):''} × ${i.qty}</div></div>
         <div class="ck-item-price">KES ${(i.price*i.qty).toLocaleString()}</div>
       </div>`).join('')}
     <div class="ck-totals">
@@ -2452,7 +2574,7 @@ async function processPayment() {
   const total = cartTotal() + deliveryFee;
   const orderNum = 'LTL-' + Date.now().toString(36).toUpperCase().slice(-8);
   if (payMethod === 'whatsapp') {
-    const itemsTxt = cart.map(i=>`• ${i.name}${i.variant?' ('+i.variant+')':''} ×${i.qty} — KES ${(i.price*i.qty).toLocaleString()}`).join('\n');
+    const itemsTxt = cart.map(i=>`• ${i.name}${getVariantLabel(i.variant)?' ('+getVariantLabel(i.variant)+')':''} ×${i.qty} — KES ${(i.price*i.qty).toLocaleString()}`).join('\n');
     const msg = encodeURIComponent(`*Order #${orderNum}*\n\n*Customer:* ${ckData.name||'N/A'}\n*Email:* ${ckData.email}\n*Phone:* ${ckData.phone||'N/A'}\n*Deliver to:* ${ckData.deliveryZone?ckData.deliveryZone.split('|')[0]:''}\n*Address:* ${ckData.address||'TBD'}\n\n*Items:*\n${itemsTxt}\n\n*Subtotal:* KES ${cartTotal().toLocaleString()}\n*Delivery:* KES ${deliveryFee.toLocaleString()}\n*TOTAL: KES ${total.toLocaleString()}*`);
     await saveOrder(orderNum, 'whatsapp', 'pending', total, null);
     window.open(getWhatsAppLink(msg), '_blank');
@@ -2782,6 +2904,7 @@ function openProdForm(id) {
   const mainImage = images[0] || '';
   const extraImages = images.slice(1).join('\n');
   const specsText = specsToMultilineText(p?.specs || {});
+  const variantsText = variantsToEditorText(p?.variants || []);
   const highlights = Array.isArray(p?.highlights) ? p.highlights.join(', ') : '';
 
   wrap.style.display = 'block';
@@ -2804,7 +2927,11 @@ function openProdForm(id) {
         <select class="form-select" id="pf-badge"><option value="">None</option>${['New','Hot','Sale'].map(b=>`<option ${p&&p.badge===b?'selected':''}>${b}</option>`).join('')}</select>
       </div>
       <div class="form-group"><label class="form-label">SKU / Model Code</label><input class="form-input" id="pf-sku" placeholder="e.g. SM-S928B" value="${escapeHtml(p?.sku || '')}"/></div>
-      <div class="form-group"><label class="form-label">Variants (comma separated)</label><input class="form-input" id="pf-variants" value="${escapeHtml(p&&p.variants?p.variants.join(', '):'')}"/></div>
+      <div class="form-group">
+        <label class="form-label">Variant / Colour (multiple)</label>
+        <textarea class="form-textarea" id="pf-variants" placeholder="One per line. Example:&#10;Titanium Black | #1f2937&#10;Silver | #c0c0c0">${escapeHtml(variantsText)}</textarea>
+        <div style="font-size:11px;color:var(--text4);margin-top:6px;">Format: <code>Variant Name | #HEXCOLOR</code> (color is optional)</div>
+      </div>
     </div>
     <div class="form-grid-2">
       <div class="form-group"><label class="form-label">Card Tagline</label><input class="form-input" id="pf-tagline" placeholder="Short line shown on product cards" value="${escapeHtml(p?.tagline || '')}"/></div>
@@ -2877,7 +3004,8 @@ async function saveProd(id) {
   const tagline = document.getElementById('pf-tagline').value.trim();
   const desc  = document.getElementById('pf-desc').value.trim();
   const specs = parseSpecsText(document.getElementById('pf-specs').value);
-  const variants = splitListValues(document.getElementById('pf-variants').value);
+  const variants = normalizeVariantEntries(document.getElementById('pf-variants').value)
+    .map((entry) => (entry.color ? { label: entry.label, color: entry.color } : { label: entry.label }));
   const highlights = splitListValues(document.getElementById('pf-highlights').value);
   const images   = normalizeProductImageInputs(false);
   if (!name||!brand||!price||!cat) { toast('err','Validation error','Name, brand, category and price are required'); return; }
@@ -4001,6 +4129,7 @@ function updateProductFormPreview() {
   const stock = parseInt(document.getElementById('pf-stock')?.value || '0', 10) || 0;
   const sku = document.getElementById('pf-sku')?.value.trim() || '';
   const highlights = splitListValues(document.getElementById('pf-highlights')?.value || '').slice(0, 3);
+  const variantEntries = normalizeVariantEntries(document.getElementById('pf-variants')?.value || '').slice(0, 4);
   const imageUrls = normalizeImageUrlList(document.getElementById('pf-images')?.value || '');
   const leadImage = imageUrls[0];
   const discount = original > price && price > 0 ? Math.round((1 - price / original) * 100) : 0;
@@ -4019,6 +4148,12 @@ function updateProductFormPreview() {
         ${tagline ? `<div class="pfp-tagline">${escapeHtml(tagline)}</div>` : ''}
         <div class="pfp-meta">${escapeHtml(categoryDisplayName(cat))}${sku ? ` | SKU: ${escapeHtml(sku)}` : ''}</div>
         ${highlights.length ? `<div class="pfp-highlights">${highlights.map((h) => `<span>${escapeHtml(h)}</span>`).join('')}</div>` : ''}
+        ${variantEntries.length ? `<div class="pfp-variants">${variantEntries.map((entry) => `
+          <span class="pfp-variant ${entry.color ? 'has-color' : ''}" ${entry.color ? `style="--v-color:${entry.color}"` : ''}>
+            ${entry.color ? '<span class="pfp-variant-dot" aria-hidden="true"></span>' : ''}
+            ${escapeHtml(entry.label)}
+          </span>
+        `).join('')}</div>` : ''}
         <div class="pfp-footer">
           <div>
             <strong>KES ${price ? price.toLocaleString() : '0'}</strong>
