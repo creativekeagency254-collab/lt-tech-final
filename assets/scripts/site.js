@@ -1483,7 +1483,7 @@ async function loadProducts() {
     } else {
       products = FALLBACK_PRODUCTS;
       dbOnline = false;
-      toast('inf','Using Demo Products','Run supabase-schema.sql to seed your database');
+      toastOnce('demo-products', 'inf', 'Using Demo Products', 'Run supabase-schema.sql to seed your database');
       setDbStatus('Connected (No Data)', 'var(--amber)');
     }
   } catch(e) {
@@ -1492,7 +1492,7 @@ async function loadProducts() {
     dbOnline = false;
     if (isSchemaProblemError(e)) {
       setDbStatus('Schema Issue', 'var(--red)');
-      toast('inf', 'Supabase Schema Issue', 'Run latest supabase-schema.sql in SQL Editor, then refresh.');
+      toastOnce('supabase-schema-issue', 'inf', 'Supabase Schema Issue', 'Run latest supabase-schema.sql in SQL Editor, then refresh.');
     } else {
       setDbStatus('Offline / Demo', 'var(--amber)');
     }
@@ -1523,8 +1523,8 @@ async function loadAdminOrders() {
     setDbStatus(isSchemaProblemError(e) ? 'Schema Issue' : 'Sync Issue', isSchemaProblemError(e) ? 'var(--red)' : 'var(--amber)');
     orders = JSON.parse(localStorage.getItem('ltl2_orders') || '[]');
     renderOrdersTable();
-    if (isSchemaProblemError(e)) toast('inf','Supabase Schema Issue','Run latest supabase-schema.sql in Supabase SQL Editor.');
-    else toast('inf','Using Local Orders','Supabase orders table may not exist yet');
+    if (isSchemaProblemError(e)) toastOnce('supabase-schema-issue-orders', 'inf', 'Supabase Schema Issue', 'Run latest supabase-schema.sql in Supabase SQL Editor.');
+    else toastOnce('local-orders-fallback', 'inf', 'Using Local Orders', 'Supabase orders table may not exist yet');
   }
 }
 
@@ -2808,7 +2808,17 @@ function openFooterInfo(topic = 'about-us') {
 // ============================================================
 // TOAST
 // ============================================================
-function toast(type, title, msg) {
+const TOAST_ONCE_PREFIX = 'ltl_toast_once_';
+const toastRecent = new Map();
+
+function toast(type, title, msg, options = {}) {
+  const dedupeMs = Number.isFinite(Number(options?.dedupeMs)) ? Number(options.dedupeMs) : 1200;
+  const dedupeKey = `${String(type || 'inf')}|${String(title || '').trim()}|${String(msg || '').trim()}`;
+  const now = Date.now();
+  const lastShown = toastRecent.get(dedupeKey) || 0;
+  if (dedupeMs > 0 && now - lastShown < dedupeMs) return;
+  toastRecent.set(dedupeKey, now);
+
   const icons = {
     ok:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
     err:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
@@ -2819,6 +2829,21 @@ function toast(type, title, msg) {
   el.innerHTML = `<div class="t-icon ${type}">${icons[type]||icons.inf}</div><div class="t-text"><strong>${title}</strong>${msg?`<p>${msg}</p>`:''}</div>`;
   document.getElementById('toastWrap').appendChild(el);
   setTimeout(() => { el.style.transition='all .3s'; el.style.opacity='0'; el.style.transform='translateY(10px)'; setTimeout(()=>el.remove(),300); }, 3200);
+}
+
+function toastOnce(cacheKey, type, title, msg, ttlMs = 2 * 60 * 60 * 1000) {
+  if (!cacheKey) {
+    toast(type, title, msg);
+    return;
+  }
+  try {
+    const key = `${TOAST_ONCE_PREFIX}${cacheKey}`;
+    const now = Date.now();
+    const prev = Number(localStorage.getItem(key) || '0');
+    if (prev && now - prev < ttlMs) return;
+    localStorage.setItem(key, String(now));
+  } catch (_) {}
+  toast(type, title, msg);
 }
 
 // ============================================================
@@ -2887,7 +2912,7 @@ window.addEventListener('resize', () => {
   updateSupabaseSetupUi('Checking schema health...');
   if (CFG.ENABLE_SUPABASE && !sb) {
     setDbStatus('Config Issue', 'var(--red)');
-    toast('inf', 'Supabase Not Ready', sbConfigIssue || 'Using local/demo data until Supabase client is available.');
+    toastOnce('supabase-not-ready-init', 'inf', 'Supabase Not Ready', sbConfigIssue || 'Using local/demo data until Supabase client is available.');
   }
   updateCartUI();
   updateWishlistBadge();
