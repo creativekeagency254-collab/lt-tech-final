@@ -37,8 +37,16 @@ const CFG = {
       || 'pk_test_69283fe06fedab5b485efdae233a92be25d77c6b'
   ).trim(),
   WHATSAPP:         '0705925800',
-  ADMIN_EMAIL:      'admin@gmail.com',
-  ADMIN_PASS:       'Mmm@29315122',
+  ADMIN_EMAIL_HASH: String(
+    runtimeBootConfig.adminEmailHash
+      || savedBootSettings?.admin?.emailHash
+      || '7932b2e116b076a54f452848eaabd5857f61bd957fe8a218faf216f24c9885bb'
+  ).trim().toLowerCase(),
+  ADMIN_PASS_HASH:  String(
+    runtimeBootConfig.adminPassHash
+      || savedBootSettings?.admin?.passHash
+      || '3000469c6ac090455517d86664eb13cb638069d961445e522a3fbec30f07f066'
+  ).trim().toLowerCase(),
 };
 const SUPABASE_PROJECT_REF = 'fbulitfyarmnyegxduqy';
 const SUPABASE_SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/sql/new`;
@@ -47,6 +55,13 @@ const PAYSTACK_INLINE_SOURCES = [
   'https://js.paystack.co/v1/inline.js',
 ];
 const CHECKOUT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+const SENSITIVE_QUERY_PATTERNS = [
+  /\b(?:sb_secret_|service[_-]?role)\b/i,
+  /\b(?:sk_(?:test|live)_[A-Za-z0-9]+)\b/i,
+  /\b(?:pk_(?:test|live)_[A-Za-z0-9]+)\b/i,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/,
+  /\b(?:password|passcode|token|secret|api[_-]?key)\b/i,
+];
 
 function normalizeWhatsAppNumber(rawNumber) {
   const digits = String(rawNumber || '').replace(/\D/g, '');
@@ -1523,10 +1538,35 @@ function getCategoryFromUrl() {
   }
 }
 
+function isSensitiveQueryValue(rawValue) {
+  const clean = String(rawValue || '').trim();
+  if (!clean) return false;
+  if (CHECKOUT_EMAIL_RE.test(clean)) return true;
+  if (clean.length > 120) return true;
+  return SENSITIVE_QUERY_PATTERNS.some((re) => re.test(clean));
+}
+
+function sanitizeSearchQuery(rawValue) {
+  const clean = String(rawValue || '').trim();
+  if (!clean) return '';
+  if (isSensitiveQueryValue(clean)) return '';
+  return clean;
+}
+
+function scrubSensitiveQueryFromUrl() {
+  if (!window.history || typeof window.history.replaceState !== 'function') return false;
+  const url = new URL(window.location.href);
+  const query = String(url.searchParams.get('q') || '').trim();
+  if (!query || !isSensitiveQueryValue(query)) return false;
+  url.searchParams.delete('q');
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  return true;
+}
+
 function getSearchQueryFromUrl() {
   try {
     const params = new URLSearchParams(window.location.search);
-    return (params.get('q') || '').trim();
+    return sanitizeSearchQuery(params.get('q') || '');
   } catch (_) {
     return '';
   }
@@ -1551,6 +1591,12 @@ function updateHeadMeta(id, value) {
   el.setAttribute('content', value);
 }
 
+function setRobotsMeta(content) {
+  const el = document.querySelector('meta[name="robots"]');
+  if (!el || !content) return;
+  el.setAttribute('content', content);
+}
+
 function updateLinkHref(id, value) {
   const el = document.getElementById(id);
   if (!el || !value) return;
@@ -1568,7 +1614,7 @@ function buildCanonical(params = {}) {
   const url = new URL(SEO_BASE_URL);
   const category = normalizeCategoryValue(params.category || '');
   const publicCategory = toPublicCategorySlug(category);
-  const query = String(params.query || '').trim();
+  const query = sanitizeSearchQuery(params.query || '');
   const product = String(params.product || '').trim();
   if (publicCategory && publicCategory !== 'all') url.searchParams.set('category', publicCategory);
   if (query) url.searchParams.set('q', query);
@@ -1578,7 +1624,7 @@ function buildCanonical(params = {}) {
 
 function syncSearchInUrl(query) {
   if (!window.history || typeof window.history.replaceState !== 'function') return;
-  const clean = String(query || '').trim();
+  const clean = sanitizeSearchQuery(query || '');
   const url = new URL(window.location.href);
   if (clean) url.searchParams.set('q', clean);
   else url.searchParams.delete('q');
@@ -1738,6 +1784,7 @@ function buildDynamicSchema(context) {
 
 function updateDynamicSeo(context) {
   if (!context) return;
+  setRobotsMeta(context.noindex ? 'noindex,follow,max-image-preview:large' : 'index,follow,max-image-preview:large');
   setSeoTitle(context.title);
   updateHeadMeta('seoDescription', context.description);
   updateHeadMeta('seoKeywords', context.keywords);
@@ -1789,6 +1836,7 @@ function updateSeoForCurrentView() {
       canonical,
       image: SEO_DEFAULT_IMAGE,
       imageAlt: 'Secure checkout',
+      noindex: true,
     });
     return;
   }
@@ -1804,13 +1852,14 @@ function updateSeoForCurrentView() {
       canonical,
       image: SEO_DEFAULT_IMAGE,
       imageAlt: 'Liked products',
+      noindex: true,
     });
     return;
   }
 
   const cat = getCurrentSeoCategory();
   const catSeo = getCategorySeoPayload(cat);
-  const cleanSearch = String(activeSearchQuery || '').trim();
+  const cleanSearch = sanitizeSearchQuery(activeSearchQuery || '');
   const canonical = buildCanonical({ category: cat, query: cleanSearch });
   if (cleanSearch) {
     updateDynamicSeo({
@@ -1822,6 +1871,7 @@ function updateSeoForCurrentView() {
       canonical,
       image: SEO_DEFAULT_IMAGE,
       imageAlt: `Search results for ${cleanSearch}`,
+      noindex: true,
     });
     return;
   }
@@ -2100,7 +2150,7 @@ function doSearch(q) {
   const searchEl = document.getElementById('searchInput');
   const isUserSearchFocus = document.activeElement === searchEl;
   if (currentPage !== 'explore' && !isUserSearchFocus) return;
-  const query = q.trim().toLowerCase();
+  const query = sanitizeSearchQuery(q || '').toLowerCase();
   if (currentPage !== 'explore') navigate('explore');
   currentPage = 'explore';
   likedViewActive = false;
@@ -3080,7 +3130,39 @@ function closeAdmin() {
   document.body.style.overflow = '';
 }
 
-function doAdminLogin() {
+function safeHashCompare(a, b) {
+  const left = String(a || '').trim().toLowerCase();
+  const right = String(b || '').trim().toLowerCase();
+  if (!left || !right || left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < left.length; i += 1) {
+    mismatch |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+async function sha256Hex(value) {
+  const input = String(value || '');
+  if (!window.crypto || !window.crypto.subtle || typeof TextEncoder === 'undefined') return '';
+  const bytes = new TextEncoder().encode(input);
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function verifyAdminCredentials(email, pwd) {
+  const allowedEmailHash = String(CFG.ADMIN_EMAIL_HASH || '').trim().toLowerCase();
+  const allowedPassHash = String(CFG.ADMIN_PASS_HASH || '').trim().toLowerCase();
+  if (!allowedEmailHash || !allowedPassHash) return false;
+  const [emailHash, passHash] = await Promise.all([
+    sha256Hex(String(email || '').trim().toLowerCase()),
+    sha256Hex(String(pwd || '')),
+  ]);
+  return safeHashCompare(emailHash, allowedEmailHash) && safeHashCompare(passHash, allowedPassHash);
+}
+
+async function doAdminLogin() {
   const now = Date.now();
   if (adminLockedUntilTs > now) {
     const secs = Math.ceil((adminLockedUntilTs - now) / 1000);
@@ -3090,8 +3172,13 @@ function doAdminLogin() {
   }
   const email = document.getElementById('adminEmail').value.trim().toLowerCase();
   const pwd = document.getElementById('adminPwd').value;
-  const allowedEmail = String(CFG.ADMIN_EMAIL || '').trim().toLowerCase();
-  if (email === allowedEmail && pwd === CFG.ADMIN_PASS) {
+  if (!window.crypto || !window.crypto.subtle || typeof TextEncoder === 'undefined') {
+    toast('err', 'Admin Unavailable', 'Secure login is not supported in this browser.');
+    document.getElementById('adminErr').classList.add('show');
+    return;
+  }
+  const isValid = await verifyAdminCredentials(email, pwd);
+  if (isValid) {
     adminAuth = true;
     adminLoginFailures = 0;
     adminLockedUntilTs = 0;
@@ -3824,6 +3911,7 @@ window.addEventListener('resize', syncSidebarForViewport);
 (async function init() {
   registerServiceWorker();
   bindInstallPromptUi();
+  const removedSensitiveQuery = scrubSensitiveQueryFromUrl();
   const initialCategory = getCategoryFromUrl();
   if (initialCategory) currentCat = initialCategory;
   storefrontMode = isJewelryCategory(currentCat) ? 'jewerlys' : 'electronics';
@@ -3863,6 +3951,10 @@ window.addEventListener('resize', syncSidebarForViewport);
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = initialQuery;
     doSearch(initialQuery);
+  } else if (removedSensitiveQuery) {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    toastOnce('sensitive-query-removed', 'inf', 'Protected URL Cleaned', 'Sensitive text was removed from the link.');
   }
 })();
 
