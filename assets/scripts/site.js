@@ -12,6 +12,9 @@ const savedBootSettings = (() => {
 const savedBootSupabase = (savedBootSettings && typeof savedBootSettings.supabase === 'object')
   ? savedBootSettings.supabase
   : {};
+const savedBootPaystack = (savedBootSettings && typeof savedBootSettings.paystack === 'object')
+  ? savedBootSettings.paystack
+  : {};
 const runtimeBootConfig = (typeof window !== 'undefined' && window.__LIFETIME_CONFIG && typeof window.__LIFETIME_CONFIG === 'object')
   ? window.__LIFETIME_CONFIG
   : {};
@@ -26,14 +29,24 @@ const CFG = {
       || 'sb_publishable_h5pygvIpbj6JaQwCiAnMSw_0MXm8Z7Q'
   ).trim(),
   SUPABASE_ANON:    String(runtimeBootConfig.supabaseAnon || savedBootSupabase.anon || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZidWxpdGZ5YXJtbnllZ3hkdXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMjE5MDAsImV4cCI6MjA4Nzc5NzkwMH0.K5UwbTYttPQeK4DTx1AO_CzPWg6IuOx4_zTbQcYEWts').trim(),
-  PAYSTACK_PK:      'pk_test_69283fe06fedab5b485efdae233a92be25d77c6b',
+  PAYSTACK_PK:      String(
+    runtimeBootConfig.paystackPublicKey
+      || runtimeBootConfig.paystackKey
+      || savedBootPaystack.publicKey
+      || savedBootSettings?.paystackPublicKey
+      || 'pk_test_69283fe06fedab5b485efdae233a92be25d77c6b'
+  ).trim(),
   WHATSAPP:         '0705925800',
   ADMIN_EMAIL:      'admin@gmail.com',
   ADMIN_PASS:       'Mmm@29315122',
 };
 const SUPABASE_PROJECT_REF = 'fbulitfyarmnyegxduqy';
 const SUPABASE_SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/sql/new`;
-const PAYSTACK_INLINE_SRC = 'https://js.paystack.co/v1/inline.js';
+const PAYSTACK_INLINE_SOURCES = [
+  'https://js.paystack.co/v2/inline.js',
+  'https://js.paystack.co/v1/inline.js',
+];
+const CHECKOUT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 function normalizeWhatsAppNumber(rawNumber) {
   const digits = String(rawNumber || '').replace(/\D/g, '');
@@ -53,8 +66,52 @@ function hasValidPaystackKey() {
   return /^pk_(test|live)_/i.test(String(CFG.PAYSTACK_PK || '').trim());
 }
 
-function hasPaystackInline() {
+function isPaystackPublicKey(value) {
+  return /^pk_(test|live)_[A-Za-z0-9]+$/i.test(String(value || '').trim());
+}
+
+function hasPaystackV2() {
+  return typeof window.Paystack === 'function';
+}
+
+function hasPaystackV1() {
   return !!(window.PaystackPop && typeof window.PaystackPop.setup === 'function');
+}
+
+function hasPaystackInline() {
+  return hasPaystackV2() || hasPaystackV1();
+}
+
+function loadScriptOnce(src, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const escapedSrc = String(src || '').replace(/"/g, '\\"');
+    const existing = document.querySelector(`script[src="${escapedSrc}"]`);
+    if (existing) {
+      if (hasPaystackInline()) {
+        resolve(true);
+        return;
+      }
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      window.setTimeout(() => {
+        if (hasPaystackInline()) resolve(true);
+        else reject(new Error(`Timed out loading ${src}`));
+      }, timeoutMs);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+    window.setTimeout(() => {
+      if (hasPaystackInline()) resolve(true);
+      else reject(new Error(`Timed out loading ${src}`));
+    }, timeoutMs);
+  });
 }
 
 let paystackLoadPromise = null;
@@ -62,36 +119,18 @@ function ensurePaystackLoaded() {
   if (hasPaystackInline()) return Promise.resolve(true);
   if (paystackLoadPromise) return paystackLoadPromise;
 
-  paystackLoadPromise = new Promise((resolve, reject) => {
-    let done = false;
-    const finish = (ok, error) => {
-      if (done) return;
-      done = true;
-      if (ok) resolve(true);
-      else reject(error || new Error('Paystack script unavailable'));
-    };
-    const finalizeCheck = () => {
-      if (hasPaystackInline()) finish(true);
-      else finish(false, new Error('Paystack script loaded but API is missing'));
-    };
-
-    const existing = document.querySelector(`script[src="${PAYSTACK_INLINE_SRC}"]`);
-    if (existing) {
-      existing.addEventListener('load', finalizeCheck, { once: true });
-      existing.addEventListener('error', () => finish(false, new Error('Paystack script failed to load')), { once: true });
-      window.setTimeout(finalizeCheck, 2500);
-      return;
+  paystackLoadPromise = (async () => {
+    let lastError = null;
+    for (const src of PAYSTACK_INLINE_SOURCES) {
+      try {
+        await loadScriptOnce(src, 5500);
+        if (hasPaystackInline()) return true;
+      } catch (error) {
+        lastError = error;
+      }
     }
-
-    const script = document.createElement('script');
-    script.src = PAYSTACK_INLINE_SRC;
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    script.onload = finalizeCheck;
-    script.onerror = () => finish(false, new Error('Paystack script failed to load'));
-    document.head.appendChild(script);
-    window.setTimeout(finalizeCheck, 3500);
-  }).then(() => true).catch((error) => {
+    throw lastError || new Error('Paystack script unavailable');
+  })().catch((error) => {
     paystackLoadPromise = null;
     throw error;
   });
@@ -307,6 +346,12 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function safeBadgeClass(rawValue) {
+  const value = String(rawValue || '').toLowerCase();
+  if (value === 'new' || value === 'hot' || value === 'sale') return value;
+  return '';
+}
+
 // ============================================================
 // SUPABASE CLIENT
 // ============================================================
@@ -469,6 +514,8 @@ let currentProduct = null;
 let selectedVariant = null;
 let detailQty = 1;
 let adminAuth = false;
+let adminLoginFailures = 0;
+let adminLockedUntilTs = 0;
 let ckStep = 1;
 let ckData = {};
 let deliveryFee = 0;
@@ -1033,13 +1080,13 @@ const CATEGORY_CARD_LABEL_MAP = {
 };
 const HEADER_TOGGLE_CATEGORIES = [...DEFAULT_JEWELRY_CATEGORIES];
 const SEO_BASE_URL = 'https://lifetimetechnology.store';
-const SEO_SITE_NAME = 'Lifetime Technology Store';
+const SEO_SITE_NAME = 'Lifetime Technology';
 const SEO_DEFAULT_IMAGE = `${SEO_BASE_URL}/assets/images/logo-original.png`;
 const CATEGORY_SEO_COPY = {
   all: {
-    title: 'Premium Electronics in Kenya',
-    description: 'Shop smartphones, laptops, watches, audio devices, tablets and smart home electronics with secure checkout in Kenya.',
-    keywords: 'electronics Kenya, phones Kenya, laptops Kenya, gadgets Kenya',
+    title: 'Electronics, Phones and Smart Devices Store',
+    description: 'Shop phones, laptops, tablets, audio, smart home gadgets and jewelry with secure checkout and assisted support.',
+    keywords: 'electronics store, phones, laptops, smart devices, tablets, jewelry, online shop',
   },
   smartphones: {
     title: 'Smartphones in Kenya',
@@ -1666,13 +1713,13 @@ function buildDynamicSchema(context) {
         '@type': 'AboutPage',
         name: 'About Lifetime Technology Store',
         description: 'Nairobi-based electronics and jewelry store focused on quality products and guided support.',
-        url: `${SEO_BASE_URL}/#footerMiniBlog`,
+        url: `${SEO_BASE_URL}/about`,
       },
       {
         '@type': 'Blog',
         name: 'Lifetime Tech Buyer Guides',
         description: 'Short buying and care guides for smartphones, laptops, gaming, and jewelry in Kenya.',
-        url: `${SEO_BASE_URL}/#footerMiniBlog`,
+        url: `${SEO_BASE_URL}/blog`,
       },
     ],
   };
@@ -1925,24 +1972,29 @@ function renderProducts(list) {
   }
   grid.innerHTML = list.map(p => {
     const disc = p.original_price ? Math.round((1 - p.price/p.original_price)*100) : 0;
+    const safeId = escapeJsSingleQuote(String(p.id || ''));
+    const safeName = escapeHtml(p.name);
+    const safeBrand = escapeHtml(p.brand);
+    const safeTagline = escapeHtml(String(p.tagline || '').trim());
+    const safeCatLabel = escapeHtml(cardCategoryLabel(p.category));
+    const badgeClass = safeBadgeClass(p.badge);
+    const safeBadge = escapeHtml(p.badge || '');
     const inWish = wishlist.includes(String(p.id));
-    const img = p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" onerror="this.style.display='none'"/>` : '';
-    const catLabel = cardCategoryLabel(p.category);
-    const tagline = String(p.tagline || '').trim();
-    return `<div class="p-card p-card-wide" role="button" tabindex="0" aria-label="Open ${escapeHtml(p.name)} details" onclick="openProduct('${p.id}')" onkeydown="handleProductCardKeydown(event,'${p.id}')">
+    const img = p.images && p.images.length ? `<img src="${escapeHtml(p.images[0])}" alt="${safeName}" loading="lazy" onerror="this.style.display='none'"/>` : '';
+    return `<div class="p-card p-card-wide" role="button" tabindex="0" aria-label="Open ${safeName} details" onclick="openProduct('${safeId}')" onkeydown="handleProductCardKeydown(event,'${safeId}')">
       <div class="p-card-img">
         ${img}
         <div class="p-card-gradient"></div>
-        ${p.badge ? `<div class="p-badge ${p.badge.toLowerCase()}">${p.badge}</div>` : ''}
-        <div class="wish-btn ${inWish?'active':''}" onclick="event.stopPropagation();toggleWishlist('${p.id}')">
+        ${safeBadge ? `<div class="p-badge ${badgeClass}">${safeBadge}</div>` : ''}
+        <div class="wish-btn ${inWish?'active':''}" onclick="event.stopPropagation();toggleWishlist('${safeId}')">
           <svg viewBox="0 0 24 24" fill="${inWish?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:${inWish?'var(--red)':'var(--text3)'}"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </div>
         <div class="p-card-body">
-          <div class="p-card-brand">${p.brand}</div>
-          <div class="p-card-name">${p.name}</div>
-          ${tagline ? `<div class="p-card-tagline">${tagline}</div>` : ''}
+          <div class="p-card-brand">${safeBrand}</div>
+          <div class="p-card-name">${safeName}</div>
+          ${safeTagline ? `<div class="p-card-tagline">${safeTagline}</div>` : ''}
           <div class="p-card-meta">
-            <span>${catLabel}</span>
+            <span>${safeCatLabel}</span>
           </div>
           <div class="p-card-footer">
             <div>
@@ -1950,7 +2002,7 @@ function renderProducts(list) {
             ${p.original_price ? `<span class="p-card-price-orig">KES ${Number(p.original_price).toLocaleString()}</span>` : ''}
             ${disc > 0 ? `<span class="p-card-disc">-${disc}%</span>` : ''}
             </div>
-            <div class="p-card-add" onclick="event.stopPropagation();quickAdd('${p.id}')">
+            <div class="p-card-add" onclick="event.stopPropagation();quickAdd('${safeId}')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
           </div>
@@ -2067,14 +2119,15 @@ function openProduct(id) {
 
 function renderDetailGallery(p) {
   const imgs = p.images && p.images.length ? p.images : null;
+  const safeName = escapeHtml(p.name);
   document.getElementById('detailGallery').innerHTML = `
     <div class="gallery-main-wrap" id="gallMainWrap">
-      ${imgs ? `<img src="${imgs[0]}" id="galMainImg" style="width:100%;height:100%;object-fit:cover"/>` : `<div class="big-placeholder">${catIcon(p.category)}</div>`}
+      ${imgs ? `<img src="${escapeHtml(imgs[0])}" alt="${safeName}" id="galMainImg" style="width:100%;height:100%;object-fit:cover"/>` : `<div class="big-placeholder">${catIcon(p.category)}</div>`}
     </div>
     <div class="gallery-thumbs">
       ${[1,2,3,4].map((_,i) => `
         <div class="g-thumb ${i===0?'active':''}" onclick="switchThumb(${i},this)">
-          ${imgs && imgs[i] ? `<img src="${imgs[i]}" alt=""/>` : catIcon(p.category)}
+          ${imgs && imgs[i] ? `<img src="${escapeHtml(imgs[i])}" alt="${safeName} thumbnail"/>` : catIcon(p.category)}
         </div>`).join('')}
     </div>`;
 }
@@ -2088,12 +2141,16 @@ function switchThumb(idx, el) {
 
 function renderDetailInfo(p) {
   const disc = p.original_price ? Math.round((1 - p.price/p.original_price)*100) : 0;
+  const safeBrand = escapeHtml(p.brand);
+  const safeCategory = escapeHtml(String(p.category || '').toUpperCase());
+  const safeName = escapeHtml(p.name);
+  const safeTagline = escapeHtml(p.tagline || '');
   const stock = p.stock;
   const stockCls = stock === 0 ? 'out' : stock < 5 ? 'low' : 'in';
   const stockTxt = stock === 0 ? 'Out of Stock' : stock < 5 ? `Only ${stock} left` : 'In Stock';
   const specs = p.specs || {};
   const highlights = Array.isArray(p.highlights) ? p.highlights.filter(Boolean) : [];
-  const descWithHighlights = `${p.description || 'Premium product by ' + p.brand}${
+  const descWithHighlights = `${escapeHtml(p.description || `Premium product by ${p.brand}`)}${
     highlights.length
       ? `<ul class="d-highlights">${highlights.slice(0, 4).map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>`
       : ''
@@ -2110,9 +2167,9 @@ function renderDetailInfo(p) {
       `).join('')}
     </div>` : '';
   document.getElementById('detailInfo').innerHTML = `
-    <div class="d-brand">${p.brand} · ${p.category.toUpperCase()}</div>
-    <div class="d-name">${p.name}</div>
-    ${p.tagline ? `<div class="d-tagline">${p.tagline}</div>` : ''}
+    <div class="d-brand">${safeBrand} · ${safeCategory}</div>
+    <div class="d-name">${safeName}</div>
+    ${safeTagline ? `<div class="d-tagline">${safeTagline}</div>` : ''}
     <div class="d-price-row">
       <span class="d-price">KES ${Number(p.price).toLocaleString()}</span>
       ${p.original_price ? `<span class="d-orig">KES ${Number(p.original_price).toLocaleString()}</span>` : ''}
@@ -2150,7 +2207,7 @@ function renderDetailInfo(p) {
     </div>
     <div id="dTabDesc" class="d-tab-content">${descWithHighlights}</div>
     <div id="dTabSpecs" style="display:none;">
-      ${Object.keys(specs).length ? `<div class="specs-table">${Object.entries(specs).map(([k,v])=>`<div class="spec-row"><div class="spec-key">${k}</div><div class="spec-val">${v}</div></div>`).join('')}</div>` : '<p style="color:var(--text3)">Specs not available.</p>'}
+      ${Object.keys(specs).length ? `<div class="specs-table">${Object.entries(specs).map(([k,v])=>`<div class="spec-row"><div class="spec-key">${escapeHtml(k)}</div><div class="spec-val">${escapeHtml(v)}</div></div>`).join('')}</div>` : '<p style="color:var(--text3)">Specs not available.</p>'}
     </div>
     <div id="dTabDelivery" style="display:none;">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:13px;color:var(--text2);line-height:1.7;">
@@ -2233,6 +2290,17 @@ function removeFromCart(key) {
   renderCartDrawer();
 }
 
+function removeFromCheckout(key) {
+  removeFromCart(key);
+  if (!cart.length) {
+    toast('inf', 'Basket Updated', 'Your basket is now empty.');
+    navigate('explore');
+    return;
+  }
+  renderCkStep();
+  renderCkSummary();
+}
+
 function updateCartItemQty(key, d) {
   const item = cart.find(i => i.key === key);
   if (!item) return;
@@ -2265,20 +2333,26 @@ function renderCartDrawer() {
     footer.innerHTML = '';
     return;
   }
-  wrap.innerHTML = cart.map(item => `
+  wrap.innerHTML = cart.map(item => {
+    const safeKey = escapeJsSingleQuote(item.key);
+    const safeName = escapeHtml(item.name);
+    const safeImage = escapeHtml(item.image || '');
+    const safeVariant = escapeHtml(getVariantLabel(item.variant));
+    const safeBrand = escapeHtml(item.brand);
+    return `
     <div class="cd-item">
       <div class="cd-item-img">
-        ${item.image ? `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'"/>` : catIcon(item.category)}
+        ${item.image ? `<img src="${safeImage}" alt="${safeName}" onerror="this.style.display='none'"/>` : catIcon(item.category)}
       </div>
       <div class="cd-item-info">
-        <div class="cd-item-name">${item.name}</div>
-        <div class="cd-item-variant">${item.brand}${getVariantLabel(item.variant)?' · '+getVariantLabel(item.variant):''}</div>
+        <div class="cd-item-name">${safeName}</div>
+        <div class="cd-item-variant">${safeBrand}${safeVariant?' · '+safeVariant:''}</div>
         <div class="cd-qty-row">
-          <div class="cq-btn" onclick="updateCartItemQty('${item.key}',-1)">
+          <div class="cq-btn" onclick="updateCartItemQty('${safeKey}',-1)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:11px;height:11px"><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
           <div class="cq-val">${item.qty}</div>
-          <div class="cq-btn" onclick="updateCartItemQty('${item.key}',1)">
+          <div class="cq-btn" onclick="updateCartItemQty('${safeKey}',1)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:11px;height:11px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
         </div>
@@ -2289,11 +2363,12 @@ function renderCartDrawer() {
       </div>
       <div class="cd-item-right">
         <span class="cd-item-price">KES ${(item.price*item.qty).toLocaleString()}</span>
-        <div class="cd-remove" onclick="removeFromCart('${item.key}')">
+        <div class="cd-remove" onclick="removeFromCart('${safeKey}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const subtotal = cartTotal();
   const deliveryText = 'Calculated at checkout';
   footer.innerHTML = `
@@ -2361,15 +2436,25 @@ function renderCkStep() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         Review Your Basket
       </h3>
-      ${cart.map(item=>`
+      ${cart.map(item => {
+        const safeKey = escapeJsSingleQuote(item.key);
+        const safeName = escapeHtml(item.name);
+        const safeBrand = escapeHtml(item.brand);
+        const safeVariant = escapeHtml(getVariantLabel(item.variant));
+        const safeImage = escapeHtml(item.image || '');
+        return `
         <div class="cd-item" style="padding:12px 0;">
-          <div class="cd-item-img">${item.image?`<img src="${item.image}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"/>`:catIcon(item.category)}</div>
+          <div class="cd-item-img">${item.image?`<img src="${safeImage}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"/>`:catIcon(item.category)}</div>
           <div class="cd-item-info">
-            <div class="cd-item-name">${item.name}</div>
-            <div class="cd-item-variant">${item.brand}${getVariantLabel(item.variant)?' · '+getVariantLabel(item.variant):''} · Qty ${item.qty}</div>
+            <div class="cd-item-name">${safeName}</div>
+            <div class="cd-item-variant">${safeBrand}${safeVariant?' · '+safeVariant:''} · Qty ${item.qty}</div>
           </div>
-          <div class="cd-item-price" style="font-family:var(--font-m);font-size:13px;font-weight:700;">KES ${(item.price*item.qty).toLocaleString()}</div>
-        </div>`).join('')}
+          <div class="ck-review-item-actions">
+            <div class="cd-item-price" style="font-family:var(--font-m);font-size:13px;font-weight:700;">KES ${(item.price*item.qty).toLocaleString()}</div>
+            <button type="button" class="ck-remove-btn" onclick="removeFromCheckout('${safeKey}')">Delete</button>
+          </div>
+        </div>`;
+      }).join('')}
       <div style="border-top:1.5px solid var(--border);padding-top:16px;margin-top:8px;">
         <div class="form-group">
           <label class="form-label">Delivery Location <span class="req">*</span></label>
@@ -2410,12 +2495,12 @@ function renderCkStep() {
         No account needed. Your email is only used for your order confirmation and invoice.
       </div>
       <div class="form-grid-2">
-        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="ck2Name" name="name" autocomplete="name" value="${ckData.name||''}" placeholder="John Doe"/></div>
-        <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input type="email" class="form-input" id="ck2Email" name="email" autocomplete="email" value="${ckData.email||''}" placeholder="john@email.com" required/></div>
-        <div class="form-group"><label class="form-label">Phone (M-Pesa / WhatsApp)</label><input type="tel" class="form-input" id="ck2Phone" name="tel" autocomplete="tel" value="${ckData.phone||''}" placeholder="0700 000 000"/></div>
-        <div class="form-group"><label class="form-label">Delivery Area</label><input class="form-input" value="${ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : ''}" readonly style="background:var(--bg);"/></div>
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="ck2Name" name="name" autocomplete="name" value="${escapeHtml(ckData.name||'')}" placeholder="John Doe"/></div>
+        <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input type="email" class="form-input" id="ck2Email" name="email" autocomplete="email" value="${escapeHtml(ckData.email||'')}" placeholder="john@email.com" required/></div>
+        <div class="form-group"><label class="form-label">Phone (M-Pesa / WhatsApp)</label><input type="tel" class="form-input" id="ck2Phone" name="tel" autocomplete="tel" value="${escapeHtml(ckData.phone||'')}" placeholder="0700 000 000"/></div>
+        <div class="form-group"><label class="form-label">Delivery Area</label><input class="form-input" value="${escapeHtml(ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : '')}" readonly style="background:var(--bg);"/></div>
       </div>
-      <div class="form-group"><label class="form-label">Street Address / Building / Landmark</label><input class="form-input" id="ck2Address" name="street-address" autocomplete="street-address" value="${ckData.address||''}" placeholder="e.g. Nextgen Mall, 3rd Floor"/></div>
+      <div class="form-group"><label class="form-label">Street Address / Building / Landmark</label><input class="form-input" id="ck2Address" name="street-address" autocomplete="street-address" value="${escapeHtml(ckData.address||'')}" placeholder="e.g. Nextgen Mall, 3rd Floor"/></div>
       <div class="ck-nav-row">
         <button class="btn-cta outline" style="width:auto;padding:11px 20px;" onclick="ckBack()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><polyline points="15 18 9 12 15 6"/></svg>
@@ -2451,8 +2536,8 @@ function renderCkStep() {
         </div>
       </div>
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;font-size:12.5px;color:var(--text3);">
-        <strong style="color:var(--text2);">Order for:</strong> ${ckData.name||ckData.email}<br/>
-        <strong style="color:var(--text2);">Deliver to:</strong> ${ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : 'N/A'} · ${deliveryDays}
+        <strong style="color:var(--text2);">Order for:</strong> ${escapeHtml(ckData.name||ckData.email)}<br/>
+        <strong style="color:var(--text2);">Deliver to:</strong> ${escapeHtml(ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : 'N/A')} · ${escapeHtml(deliveryDays)}
       </div>
       <div class="ck-nav-row">
         <button class="btn-cta outline" style="width:auto;padding:11px 20px;" onclick="ckBack()">
@@ -2472,18 +2557,25 @@ function renderCkStep() {
 
 function renderCkSummary() {
   const total = cartTotal() + deliveryFee;
-  const supportLabel = ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : 'your delivery area';
+  const supportLabel = escapeHtml(ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : 'your delivery area');
+  const safeDeliveryArea = escapeHtml(ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : '');
   document.getElementById('ckSummaryBox').innerHTML = `
     <h4>Order Summary</h4>
-    ${cart.map(i=>`
+    ${cart.map(i=>{
+      const safeName = escapeHtml(i.name);
+      const safeBrand = escapeHtml(i.brand);
+      const safeVariant = escapeHtml(getVariantLabel(i.variant));
+      const safeImage = escapeHtml(i.image || '');
+      return `
       <div class="ck-item">
-        <div class="ck-item-img">${i.image?`<img src="${i.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:catIcon(i.category)}</div>
-        <div class="ck-item-info"><div class="ck-item-name">${i.name}</div><div class="ck-item-meta">${i.brand}${getVariantLabel(i.variant)?' · '+getVariantLabel(i.variant):''} × ${i.qty}</div></div>
+        <div class="ck-item-img">${i.image?`<img src="${safeImage}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"/>`:catIcon(i.category)}</div>
+        <div class="ck-item-info"><div class="ck-item-name">${safeName}</div><div class="ck-item-meta">${safeBrand}${safeVariant?' · '+safeVariant:''} × ${i.qty}</div></div>
         <div class="ck-item-price">KES ${(i.price*i.qty).toLocaleString()}</div>
-      </div>`).join('')}
+      </div>`;
+    }).join('')}
     <div class="ck-totals">
       <div class="ck-tot-row"><span>Subtotal</span><span>KES ${cartTotal().toLocaleString()}</span></div>
-      <div class="ck-tot-row"><span>Delivery${ckData.deliveryZone?' ('+ckData.deliveryZone.split('|')[0]+')':''}</span><span>${deliveryFee > 0 ? 'KES '+deliveryFee.toLocaleString() : '—'}</span></div>
+      <div class="ck-tot-row"><span>Delivery${ckData.deliveryZone?' ('+safeDeliveryArea+')':''}</span><span>${deliveryFee > 0 ? 'KES '+deliveryFee.toLocaleString() : '—'}</span></div>
       <div class="ck-tot-row grand"><span>Total</span><span class="ck-amount">KES ${total.toLocaleString()}</span></div>
     </div>
     <div class="ck-help-box">
@@ -2538,6 +2630,168 @@ function selectPayMethod(method) {
   }
 }
 
+function isValidCheckoutEmail(email) {
+  return CHECKOUT_EMAIL_RE.test(String(email || '').trim());
+}
+
+function toPaystackAmount(totalKes) {
+  const normalized = Number(totalKes);
+  if (!Number.isFinite(normalized)) return 0;
+  const amount = Math.round(normalized * 100);
+  return amount > 0 ? amount : 0;
+}
+
+function isLocalRuntime() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
+async function verifyPaystackTransaction(reference, total) {
+  const expectedAmount = toPaystackAmount(total);
+  const payload = {
+    reference: String(reference || '').trim(),
+    expectedAmount,
+    expectedCurrency: 'KES',
+  };
+
+  const response = await fetch('/api/paystack-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result?.ok || !result?.verified) {
+    throw new Error(String(result?.error || 'Paystack verification failed.'));
+  }
+  return result;
+}
+
+function buildInvoiceRecord(orderNum, method, total, reference) {
+  const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+  const orderCode = String(orderNum || '').replace(/[^A-Z0-9]/gi, '').slice(-8).toUpperCase();
+  const invoiceNumber = `INV-${orderCode || 'LTL'}-${suffix}`;
+  return {
+    invoice_number: invoiceNumber,
+    order_number: orderNum,
+    payment_reference: reference || null,
+    payment_method: method,
+    payment_status: String(method || '').toLowerCase() === 'paystack' ? 'paid' : 'pending',
+    customer_email: ckData.email || '',
+    customer_name: ckData.name || '',
+    total: Number(total || 0),
+    currency: 'KES',
+    issued_at: new Date().toISOString(),
+    items: cart.map((item) => ({
+      name: item.name,
+      brand: item.brand,
+      variant: getVariantLabel(item.variant),
+      qty: item.qty,
+      price: Number(item.price || 0),
+      line_total: Number(item.price || 0) * Number(item.qty || 0),
+    })),
+  };
+}
+
+function saveInvoiceRecord(invoice) {
+  if (!invoice || typeof invoice !== 'object') return;
+  const current = JSON.parse(localStorage.getItem('ltl2_invoices') || '[]');
+  current.unshift(invoice);
+  localStorage.setItem('ltl2_invoices', JSON.stringify(current.slice(0, 200)));
+}
+
+function downloadInvoice(orderNum) {
+  const source = JSON.parse(localStorage.getItem('ltl2_invoices') || '[]');
+  const invoice = source.find((entry) => String(entry.order_number) === String(orderNum));
+  if (!invoice) {
+    toast('inf', 'Invoice Pending', 'Invoice will be available after payment is confirmed.');
+    return;
+  }
+  const rows = Array.isArray(invoice.items) ? invoice.items : [];
+  const lines = rows.map((item, idx) => `${idx + 1}. ${item.name}${item.variant ? ` (${item.variant})` : ''} x${item.qty} - KES ${Number(item.line_total || 0).toLocaleString()}`);
+  const text = [
+    `Lifetime Technology Store Invoice`,
+    `Invoice No: ${invoice.invoice_number}`,
+    `Order No: ${invoice.order_number}`,
+    `Issued: ${new Date(invoice.issued_at).toLocaleString()}`,
+    `Customer: ${invoice.customer_name || 'N/A'}`,
+    `Email: ${invoice.customer_email || 'N/A'}`,
+    `Method: ${invoice.payment_method}`,
+    `Status: ${invoice.payment_status}`,
+    ``,
+    `Items:`,
+    ...lines,
+    ``,
+    `Total: KES ${Number(invoice.total || 0).toLocaleString()}`,
+    `Thank you for shopping with Lifetime Technology Store.`,
+  ].join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${invoice.invoice_number}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+}
+
+function startPaystackCheckout(orderNum, total, onSuccess, onCancel, onError) {
+  const cleanEmail = String(ckData.email || '').trim().toLowerCase();
+  const cleanName = String(ckData.name || '').trim();
+  const nameParts = cleanName.split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  const amount = toPaystackAmount(total);
+  if (!amount) throw new Error('Invalid checkout amount');
+
+  const metadata = {
+    custom_fields: [
+      { display_name: 'Customer', variable_name: 'customer', value: cleanName || cleanEmail },
+      { display_name: 'Order', variable_name: 'order', value: orderNum },
+      { display_name: 'Store', variable_name: 'store', value: 'lifetimetechnology.store' },
+    ],
+  };
+
+  if (hasPaystackV2()) {
+    const popup = new window.Paystack();
+    popup.newTransaction({
+      key: CFG.PAYSTACK_PK,
+      email: cleanEmail,
+      amount,
+      currency: 'KES',
+      reference: orderNum,
+      firstName,
+      lastName,
+      metadata,
+      onSuccess: (transaction) => onSuccess(String(transaction?.reference || orderNum)),
+      onCancel: () => onCancel(),
+      onError: (error) => onError(error),
+    });
+    return;
+  }
+
+  if (hasPaystackV1()) {
+    const handler = window.PaystackPop.setup({
+      key: CFG.PAYSTACK_PK,
+      email: cleanEmail,
+      amount,
+      currency: 'KES',
+      ref: orderNum,
+      metadata,
+      callback: (response) => onSuccess(String(response?.reference || response?.trxref || orderNum)),
+      onClose: () => onCancel(),
+    });
+    if (!handler || typeof handler.openIframe !== 'function') {
+      throw new Error('Paystack handler was not initialized');
+    }
+    handler.openIframe();
+    return;
+  }
+
+  throw new Error('Paystack inline API not available');
+}
+
 function ckNext(fromStep) {
   if (fromStep === 1) {
     const zone = document.getElementById('ck1Zone')?.value;
@@ -2548,8 +2802,8 @@ function ckNext(fromStep) {
     deliveryDays = parts[2] || '';
     ckStep = 2;
   } else if (fromStep === 2) {
-    const email = document.getElementById('ck2Email')?.value.trim();
-    if (!email || !email.includes('@')) { toast('err','Email required','Enter a valid email for order confirmation'); return; }
+    const email = document.getElementById('ck2Email')?.value.trim().toLowerCase();
+    if (!isValidCheckoutEmail(email)) { toast('err','Email required','Enter a valid email for order confirmation'); return; }
     ckData.name = document.getElementById('ck2Name')?.value.trim();
     ckData.email = email;
     ckData.phone = document.getElementById('ck2Phone')?.value.trim();
@@ -2573,15 +2827,31 @@ function ckBack() {
 async function processPayment() {
   const total = cartTotal() + deliveryFee;
   const orderNum = 'LTL-' + Date.now().toString(36).toUpperCase().slice(-8);
+  const cleanEmail = String(ckData.email || '').trim().toLowerCase();
+  if (!isValidCheckoutEmail(cleanEmail)) {
+    ckStep = 2;
+    renderCkTimeline();
+    renderCkStep();
+    renderCkSummary();
+    toast('err', 'Email required', 'Enter a valid email before starting payment.');
+    return;
+  }
+  ckData.email = cleanEmail;
   if (payMethod === 'whatsapp') {
     const itemsTxt = cart.map(i=>`• ${i.name}${getVariantLabel(i.variant)?' ('+getVariantLabel(i.variant)+')':''} ×${i.qty} — KES ${(i.price*i.qty).toLocaleString()}`).join('\n');
     const msg = encodeURIComponent(`*Order #${orderNum}*\n\n*Customer:* ${ckData.name||'N/A'}\n*Email:* ${ckData.email}\n*Phone:* ${ckData.phone||'N/A'}\n*Deliver to:* ${ckData.deliveryZone?ckData.deliveryZone.split('|')[0]:''}\n*Address:* ${ckData.address||'TBD'}\n\n*Items:*\n${itemsTxt}\n\n*Subtotal:* KES ${cartTotal().toLocaleString()}\n*Delivery:* KES ${deliveryFee.toLocaleString()}\n*TOTAL: KES ${total.toLocaleString()}*`);
+    const invoice = buildInvoiceRecord(orderNum, 'WhatsApp', total, null);
+    saveInvoiceRecord(invoice);
     await saveOrder(orderNum, 'whatsapp', 'pending', total, null);
     window.open(getWhatsAppLink(msg), '_blank');
-    completeOrder(orderNum, 'WhatsApp');
+    completeOrder(orderNum, 'WhatsApp', invoice);
   } else {
     if (!hasValidPaystackKey()) {
       toast('err', 'Payment Error', 'Paystack key is missing or invalid in settings.');
+      return;
+    }
+    if (!toPaystackAmount(total)) {
+      toast('err', 'Payment Error', 'Checkout total is invalid. Please refresh your basket and retry.');
       return;
     }
     let paystackReady = false;
@@ -2596,28 +2866,42 @@ async function processPayment() {
       return;
     }
     try {
-      const handler = window.PaystackPop.setup({
-        key: CFG.PAYSTACK_PK,
-        email: ckData.email,
-        amount: total * 100,
-        currency: 'KES',
-        ref: orderNum,
-        metadata: {
-          custom_fields:[{display_name:'Customer',variable_name:'customer',value:ckData.name||ckData.email},{display_name:'Order',variable_name:'order',value:orderNum}]
+      startPaystackCheckout(
+        orderNum,
+        total,
+        async (reference) => {
+          const ref = String(reference || orderNum).trim();
+          const liveMode = /^pk_live_/i.test(String(CFG.PAYSTACK_PK || '').trim());
+          let verified = false;
+          try {
+            await verifyPaystackTransaction(ref, total);
+            verified = true;
+          } catch (verifyError) {
+            const verifyMsg = String(verifyError?.message || 'Verification failed').trim();
+            if (!liveMode && isLocalRuntime()) {
+              console.warn('Paystack verification skipped on local test mode:', verifyMsg);
+              verified = true;
+            } else {
+              toast('err', 'Payment Verification Failed', verifyMsg);
+              return;
+            }
+          }
+          if (!verified) return;
+          const invoice = buildInvoiceRecord(orderNum, 'Paystack', total, ref);
+          saveInvoiceRecord(invoice);
+          await saveOrder(orderNum, 'paystack', 'paid', total, ref);
+          completeOrder(orderNum, 'Paystack', invoice);
         },
-        callback: async (response) => {
-          await saveOrder(orderNum, 'paystack', 'paid', total, response.reference);
-          completeOrder(orderNum, 'Paystack');
-        },
-        onClose: () => toast('inf','Payment cancelled','Your basket is saved')
-      });
-      if (!handler || typeof handler.openIframe !== 'function') {
-        throw new Error('Paystack handler was not initialized');
-      }
-      handler.openIframe();
-    } catch(e) {
-      console.warn('Paystack init error:', e?.message || e);
-      toast('err', 'Payment Error', 'Paystack could not start. Retry payment or use WhatsApp.');
+        () => toast('inf','Payment cancelled','Your basket is saved'),
+        (error) => {
+          const details = String(error?.message || '').trim();
+          toast('err', 'Payment Error', details ? `Paystack error: ${details}` : 'Payment failed. Retry payment or use WhatsApp.');
+        }
+      );
+    } catch (e) {
+      const details = String(e?.message || '').trim();
+      console.warn('Paystack init error:', details || e);
+      toast('err', 'Payment Error', details ? `Paystack could not start: ${details}` : 'Paystack could not start. Retry payment or use WhatsApp.');
     }
   }
 }
@@ -2657,30 +2941,39 @@ async function saveOrder(orderNum, method, payStatus, total, ref) {
   updateTopbarStats();
 }
 
-function completeOrder(orderNum, method) {
+function completeOrder(orderNum, method, invoice) {
   ckStep = 4;
   renderCkTimeline();
   const total = cartTotal() + deliveryFee;
   const supportMsg = encodeURIComponent(`Hi, I placed order #${orderNum} and need help.`);
+  const invoiceNumber = invoice?.invoice_number || '';
+  const safeEmail = escapeHtml(ckData.email || '');
+  const safeOrderNum = escapeHtml(orderNum);
+  const safeArea = escapeHtml(ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : '');
+  const safeMethod = escapeHtml(method);
+  const safeDeliveryDays = escapeHtml(deliveryDays || '');
+  const safeInvoice = escapeHtml(invoiceNumber);
   navigate('success');
   document.getElementById('successContent').innerHTML = `
     <div class="success-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     </div>
     <h2>Order Confirmed!</h2>
-    <p>Your order has been placed. A confirmation and invoice will be sent to <strong style="color:var(--primary)">${ckData.email}</strong> by our team.</p>
+    <p>Your order has been placed. A confirmation has been recorded for <strong style="color:var(--primary)">${safeEmail}</strong> and your invoice is ready below.</p>
     <div class="order-detail-card">
       <div class="odc-order-num">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        ${orderNum}
+        ${safeOrderNum}
       </div>
-      <div class="odc-row"><span>Deliver to</span><strong>${ckData.deliveryZone?ckData.deliveryZone.split('|')[0]:''}</strong></div>
-      <div class="odc-row"><span>Paid via</span><strong>${method}</strong></div>
+      <div class="odc-row"><span>Deliver to</span><strong>${safeArea}</strong></div>
+      <div class="odc-row"><span>Paid via</span><strong>${safeMethod}</strong></div>
+      ${safeInvoice ? `<div class="odc-row"><span>Invoice No</span><strong>${safeInvoice}</strong></div>` : ''}
       <div class="odc-row"><span>Total</span><strong style="color:var(--primary);font-family:var(--font-m)">KES ${total.toLocaleString()}</strong></div>
-      <div class="odc-row"><span>Estimated delivery</span><strong>${deliveryDays}</strong></div>
+      <div class="odc-row"><span>Estimated delivery</span><strong>${safeDeliveryDays}</strong></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button class="btn-cta blue" onclick="navigate('explore')" style="justify-content:center;">Continue Shopping</button>
+      <button class="btn-cta outline" onclick="downloadInvoice('${safeOrderNum}')" style="justify-content:center;">Download Invoice</button>
       <a href="${getWhatsAppLink(supportMsg)}" target="_blank" class="btn-cta green" style="justify-content:center;">
         <svg viewBox="0 0 24 24" fill="white" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
         WhatsApp Support
@@ -2750,14 +3043,29 @@ function closeAdmin() {
 }
 
 function doAdminLogin() {
+  const now = Date.now();
+  if (adminLockedUntilTs > now) {
+    const secs = Math.ceil((adminLockedUntilTs - now) / 1000);
+    toast('err', 'Admin Locked', `Too many attempts. Try again in ${secs}s.`);
+    document.getElementById('adminErr').classList.add('show');
+    return;
+  }
   const email = document.getElementById('adminEmail').value.trim().toLowerCase();
   const pwd = document.getElementById('adminPwd').value;
   const allowedEmail = String(CFG.ADMIN_EMAIL || '').trim().toLowerCase();
   if (email === allowedEmail && pwd === CFG.ADMIN_PASS) {
     adminAuth = true;
+    adminLoginFailures = 0;
+    adminLockedUntilTs = 0;
     document.getElementById('adminErr').classList.remove('show');
     showAdminDash();
   } else {
+    adminLoginFailures += 1;
+    if (adminLoginFailures >= 5) {
+      adminLockedUntilTs = Date.now() + (5 * 60 * 1000);
+      adminLoginFailures = 0;
+      toast('err', 'Admin Locked', 'Too many failed logins. Locked for 5 minutes.');
+    }
     document.getElementById('adminErr').classList.add('show');
   }
 }
@@ -2848,25 +3156,33 @@ function renderAdminProducts() {
   if (!scopedProducts.length) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:34px;color:var(--text4);">No products in ${adminCatalogMode === 'jewerlys' ? 'Jewelry' : 'Electronics'} yet.</td></tr>`;
   } else {
-    tbody.innerHTML = scopedProducts.map(p => `
+    tbody.innerHTML = scopedProducts.map(p => {
+    const safeId = escapeJsSingleQuote(String(p.id || ''));
+    const safeName = escapeHtml(p.name);
+    const safeBrand = escapeHtml(p.brand);
+    const safeSku = escapeHtml(p.sku || '');
+    const safeCategory = escapeHtml(p.category);
+    const safeImage = escapeHtml(p.images?.[0] || '');
+    return `
     <tr>
-      <td><div class="td-prod"><div class="td-thumb">${p.images && p.images[0] ? `<img src="${p.images[0]}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='${catIcon(p.category).replace(/'/g, '&#39;')}'"/>` : catIcon(p.category)}</div><div><div class="td-name">${p.name}</div><div class="td-sub">${p.brand}${p.sku ? ' | SKU: ' + p.sku : ''}${p.images?.length ? ' | ' + p.images.length + ' image' + (p.images.length === 1 ? '' : 's') : ''}</div></div></div></td>
-      <td><span class="tag-chip">${p.category}</span></td>
+      <td><div class="td-prod"><div class="td-thumb">${p.images && p.images[0] ? `<img src="${safeImage}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='${catIcon(p.category).replace(/'/g, '&#39;')}'"/>` : catIcon(p.category)}</div><div><div class="td-name">${safeName}</div><div class="td-sub">${safeBrand}${p.sku ? ' | SKU: ' + safeSku : ''}${p.images?.length ? ' | ' + p.images.length + ' image' + (p.images.length === 1 ? '' : 's') : ''}</div></div></div></td>
+      <td><span class="tag-chip">${safeCategory}</span></td>
       <td style="font-family:var(--font-m)">KES ${Number(p.price).toLocaleString()}</td>
       <td style="font-family:var(--font-m)">${p.stock}</td>
       <td><span class="pill ${p.active!==false?'active':'inactive'}">${p.active!==false?'Active':'Hidden'}</span></td>
       <td><div class="tbl-btns">
-        <div class="tbl-btn" onclick="openProdForm('${p.id}')" title="Edit">
+        <div class="tbl-btn" onclick="openProdForm('${safeId}')" title="Edit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </div>
-        <div class="tbl-btn" onclick="toggleActive('${p.id}')" title="Toggle">
+        <div class="tbl-btn" onclick="toggleActive('${safeId}')" title="Toggle">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/>${p.active!==false?'<line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/>':'<path d="M20 6L9 17l-5-5"/>'}</svg>
         </div>
-        <div class="tbl-btn del" onclick="deleteProduct('${p.id}')" title="Delete">
+        <div class="tbl-btn del" onclick="deleteProduct('${safeId}')" title="Delete">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         </div>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   }
   document.getElementById('aStatProd').textContent = scopedProducts.filter((p) => p.active !== false).length;
 }
@@ -2881,12 +3197,12 @@ function renderOrdersTable() {
   }
   tbody.innerHTML = allOrders.map(o => `
     <tr>
-      <td style="font-family:var(--font-m);color:var(--primary);font-size:12px">${o.order_number}</td>
-      <td>${o.customer_name||o.customer_email||'—'}</td>
-      <td style="font-size:12px">${o.delivery_area||'—'}</td>
+      <td style="font-family:var(--font-m);color:var(--primary);font-size:12px">${escapeHtml(o.order_number)}</td>
+      <td>${escapeHtml(o.customer_name||o.customer_email||'—')}</td>
+      <td style="font-size:12px">${escapeHtml(o.delivery_area||'—')}</td>
       <td style="font-family:var(--font-m)">${Number(o.total||0).toLocaleString()}</td>
-      <td><span class="pill ${o.payment_status==='paid'?'paid':'pending'}">${o.payment_status}</span></td>
-      <td><span class="pill ${o.order_status==='confirmed'?'active':o.order_status==='shipped'?'shipped':'pending'}">${o.order_status||'confirmed'}</span></td>
+      <td><span class="pill ${o.payment_status==='paid'?'paid':'pending'}">${escapeHtml(o.payment_status)}</span></td>
+      <td><span class="pill ${o.order_status==='confirmed'?'active':o.order_status==='shipped'?'shipped':'pending'}">${escapeHtml(o.order_status||'confirmed')}</span></td>
       <td style="font-size:12px;color:var(--text3)">${new Date(o.created_at).toLocaleDateString('en-KE')}</td>
     </tr>`).join('');
 }
@@ -2909,7 +3225,7 @@ function openProdForm(id) {
 
   wrap.style.display = 'block';
   wrap.innerHTML = `<div class="prod-form">
-    <h4>${p?'Edit: '+p.name:'Add New Product'}
+    <h4>${p?`Edit: ${escapeHtml(p.name)}`:'Add New Product'}
       <button class="btn-cta outline" style="width:auto;padding:8px 14px;font-size:12px;" onclick="document.getElementById('prodFormWrap').style.display='none'">Cancel</button>
     </h4>
     <div class="form-grid-3">
@@ -3602,6 +3918,8 @@ function loadStoreSettings() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem('ltl2_store_settings') || 'null'); } catch (_) {}
   syncSupabaseSettingInputs();
+  const pkInput = document.getElementById('settingsPaystack');
+  if (pkInput) pkInput.value = String(CFG.PAYSTACK_PK || '').trim();
   if (!saved || typeof saved !== 'object') {
     syncMarqueeInputControls();
     renderImageMarquee(storefrontMode);
@@ -3614,6 +3932,11 @@ function loadStoreSettings() {
   if (sn && saved.storeName) sn.value = saved.storeName;
   if (se && saved.supportEmail) se.value = saved.supportEmail;
   if (saved.whatsapp) CFG.WHATSAPP = String(saved.whatsapp).trim();
+  const storedPaystack = String(saved.paystackPublicKey || saved?.paystack?.publicKey || '').trim();
+  if (storedPaystack) {
+    CFG.PAYSTACK_PK = storedPaystack;
+    if (pkInput) pkInput.value = storedPaystack;
+  }
   if (saved.supabase && typeof saved.supabase === 'object') {
     const storedUrl = String(saved.supabase.url || '').trim();
     const storedKey = String(saved.supabase.publishable || saved.supabase.key || '').trim();
@@ -3642,11 +3965,20 @@ function saveStoreSettings() {
   const wa = document.getElementById('settingsWA')?.value?.trim() || CFG.WHATSAPP;
   const storeName = document.getElementById('settingsStoreName')?.value?.trim() || 'Lifetime Limited';
   const supportEmail = document.getElementById('settingsSupportEmail')?.value?.trim() || 'support@lifetimeltd.co.ke';
+  const paystackKey = String(document.getElementById('settingsPaystack')?.value || CFG.PAYSTACK_PK || '').trim();
   const sbUrlInput = String(document.getElementById('settingsSbUrl')?.value || CFG.SUPABASE_URL || '').trim();
   const sbKeyInput = String(document.getElementById('settingsSbKey')?.value || CFG.SUPABASE_PUBLISHABLE || CFG.SUPABASE_ANON || '').trim();
   const previousSbUrl = String(CFG.SUPABASE_URL || '').trim();
   const previousSbKey = String(CFG.SUPABASE_PUBLISHABLE || CFG.SUPABASE_ANON || '').trim();
 
+  if (/^(sk_|sb_secret_)/i.test(paystackKey)) {
+    toast('err', 'Unsafe Paystack Key', 'Do not use secret keys (sk_/sb_secret_) in the browser.');
+    return;
+  }
+  if (!isPaystackPublicKey(paystackKey)) {
+    toast('err', 'Invalid Paystack Key', 'Use a valid public key in the format pk_test_... or pk_live_...');
+    return;
+  }
   if (!/^https?:\/\//i.test(sbUrlInput)) {
     toast('err', 'Invalid Supabase URL', 'Use a full https:// URL for your Supabase project.');
     return;
@@ -3662,6 +3994,7 @@ function saveStoreSettings() {
 
   applyMarqueeSettings(false);
   CFG.WHATSAPP = wa;
+  CFG.PAYSTACK_PK = paystackKey;
   CFG.SUPABASE_URL = sbUrlInput;
   CFG.SUPABASE_PUBLISHABLE = sbKeyInput;
   if (/^eyJ[A-Za-z0-9_-]*\./.test(sbKeyInput)) CFG.SUPABASE_ANON = sbKeyInput;
@@ -3672,6 +4005,11 @@ function saveStoreSettings() {
     whatsapp: wa,
     storeName,
     supportEmail,
+    paystackPublicKey: paystackKey,
+    paystack: {
+      publicKey: paystackKey,
+      mode: /^pk_live_/i.test(paystackKey) ? 'live' : 'test',
+    },
     supabase: {
       url: sbUrlInput,
       publishable: sbKeyInput,
@@ -3687,11 +4025,12 @@ function saveStoreSettings() {
     window.setTimeout(() => window.location.reload(), 700);
     return;
   }
-  toast('ok', 'Settings Saved', 'Store settings, branding, and moving strip images updated.');
+  toast('ok', 'Settings Saved', /^pk_live_/i.test(paystackKey) ? 'Live Paystack key saved. Store is ready for live payment attempts.' : 'Test Paystack key saved. Switch to pk_live for real charges.');
 }
 
 // ===== BANNER IMAGE MANAGER =====
 function applyBannerImg(slot) {
+  const safeTitleHtml = (value) => escapeHtml(value).replace(/\n/g, '<br/>');
   if (slot === 1) {
     const urlInput = document.getElementById('bs1Url');
     const rawUrl = urlInput?.value || '';
@@ -3709,7 +4048,7 @@ function applyBannerImg(slot) {
       heroImg.style.display = 'block';
       if (overlay) overlay.style.background = 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, transparent 60%)';
     }
-    if (titleEl && title) titleEl.innerHTML = title;
+    if (titleEl && title) titleEl.innerHTML = safeTitleHtml(title);
     if (subEl && sub) subEl.textContent = sub;
     // Update preview
     updateBannerPreview(1, url);
@@ -3730,7 +4069,7 @@ function applyBannerImg(slot) {
     }
     const t = document.getElementById('promoCard1Title');
     const s = document.getElementById('promoCard1Sub');
-    if (t && title) t.innerHTML = title;
+    if (t && title) t.innerHTML = safeTitleHtml(title);
     if (s && sub) s.textContent = sub;
     updateBannerPreview(2, url);
     toast('ok', 'Banner Updated', 'Promo card 1 applied');
@@ -3750,7 +4089,7 @@ function applyBannerImg(slot) {
     }
     const t = document.getElementById('promoCard2Title');
     const s = document.getElementById('promoCard2Sub');
-    if (t && title) t.innerHTML = title;
+    if (t && title) t.innerHTML = safeTitleHtml(title);
     if (s && sub) s.textContent = sub;
     updateBannerPreview(3, url);
     toast('ok', 'Banner Updated', 'Promo card 2 applied');
@@ -3765,7 +4104,7 @@ function updateBannerPreview(slot, url) {
     prev.innerHTML = `<div class="bsp-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span>Invalid URL</span></div>`;
     return;
   }
-  prev.innerHTML = `<img src="${normalized}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<div class=bsp-placeholder><svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\' style=\\'width:24px;height:24px\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\'/></svg><span>Invalid URL</span></div>'"/>`;
+  prev.innerHTML = `<img src="${escapeHtml(normalized)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<div class=bsp-placeholder><svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\' style=\\'width:24px;height:24px\\'><rect x=\\'3\\' y=\\'3\\' width=\\'18\\' height=\\'18\\' rx=\\'2\\'/></svg><span>Invalid URL</span></div>'"/>`;
 }
 
 // ===== CATEGORY IMAGE MANAGER =====
@@ -3974,7 +4313,7 @@ function applyCatImg(cat) {
   // Store it
   const card = document.querySelector('[data-cat="' + cat + '"] .cmc-img');
   if (card) {
-    card.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=cmc-placeholder><svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\' style=\'width:28px;height:28px\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\'/></svg></div>'"/>`;
+    card.innerHTML = `<img src="${escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=cmc-placeholder><svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\' style=\'width:28px;height:28px\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\'/></svg></div>'"/>`;
   }
   toast('ok', 'Category Image Set', cat + ' banner image updated');
 }
@@ -4138,7 +4477,7 @@ function updateProductFormPreview() {
   preview.innerHTML = `
     <div class="pfp-shell">
       <div class="pfp-media ${leadImage ? '' : 'pfp-fallback'}">
-        ${leadImage ? `<img src="${leadImage}" alt="${escapeHtml(name)}" onerror="this.remove(); this.parentElement.classList.add('pfp-fallback')"/>` : ''}
+        ${leadImage ? `<img src="${escapeHtml(leadImage)}" alt="${escapeHtml(name)}" onerror="this.remove(); this.parentElement.classList.add('pfp-fallback')"/>` : ''}
         ${catIcon(cat)}
         ${badge ? `<span class="pfp-badge">${escapeHtml(badge)}</span>` : ''}
       </div>

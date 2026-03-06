@@ -19,6 +19,19 @@ Primary currency: KES
 - Search view: https://lifetimetechnology.store/?category={category-slug}&q={query}
 - Product detail (SPA state): https://lifetimetechnology.store/?category={category-slug}&product={product-slug}
 
+## Indexable Pages
+- Products: https://lifetimetechnology.store/products
+- Categories: https://lifetimetechnology.store/categories
+- About: https://lifetimetechnology.store/about
+- Contact: https://lifetimetechnology.store/contact
+- Track Order: https://lifetimetechnology.store/track-order
+- Login: https://lifetimetechnology.store/login
+- Blog: https://lifetimetechnology.store/blog
+- FAQs: https://lifetimetechnology.store/faqs
+- Privacy: https://lifetimetechnology.store/privacy-policy
+- Returns: https://lifetimetechnology.store/returns-policy
+- Warranty: https://lifetimetechnology.store/warranty-info
+
 ## Product Fields
 - name
 - brand

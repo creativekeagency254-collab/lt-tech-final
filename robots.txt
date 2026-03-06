@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /tmp_paystack_inline.js
 
 Sitemap: https://lifetimetechnology.store/sitemap.xml
 Host: lifetimetechnology.store

@@ -397,6 +397,9 @@ body.admin-open .admin-header-dot{
 .cd-remove{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:7px;color:var(--text4);cursor:pointer;transition:var(--trans);background:var(--bg)}
 .cd-remove:hover{background:var(--red-lt);color:var(--red)}
 .cd-remove svg{width:13px;height:13px}
+.ck-review-item-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:88px}
+.ck-remove-btn{border:1px solid #fecaca;background:#fff1f2;color:#b91c1c;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;transition:var(--trans)}
+.ck-remove-btn:hover{background:#ffe4e6;border-color:#fda4af}
 .cd-footer{padding:14px 14px 16px;border-top:1px solid var(--border);background:var(--white)}
 .cd-summary-card{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:10px 12px;margin-bottom:10px}
 .cd-total-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--text3);padding:4px 0}
