@@ -18,6 +18,17 @@ const savedBootPaystack = (savedBootSettings && typeof savedBootSettings.paystac
 const runtimeBootConfig = (typeof window !== 'undefined' && window.__LIFETIME_CONFIG && typeof window.__LIFETIME_CONFIG === 'object')
   ? window.__LIFETIME_CONFIG
   : {};
+const DEFAULT_ADMIN_EMAIL_HASH = '7932b2e116b076a54f452848eaabd5857f61bd957fe8a218faf216f24c9885bb';
+const DEFAULT_ADMIN_PASS_HASHES = [
+  'dc4010fb2e94c09d1d3a98e9a4e9e17366ee3225ad9679bab9ea76ff39cbcbae', // Mican@2021
+  '3000469c6ac090455517d86664eb13cb638069d961445e522a3fbec30f07f066', // legacy passcode
+];
+const runtimeAdminPassHashes = Array.isArray(runtimeBootConfig.adminPassHashes)
+  ? runtimeBootConfig.adminPassHashes
+  : [runtimeBootConfig.adminPassHash];
+const savedAdminPassHashes = Array.isArray(savedBootSettings?.admin?.passHashes)
+  ? savedBootSettings.admin.passHashes
+  : [savedBootSettings?.admin?.passHash];
 
 const CFG = {
   ENABLE_SUPABASE:  true,
@@ -40,13 +51,11 @@ const CFG = {
   ADMIN_EMAIL_HASH: String(
     runtimeBootConfig.adminEmailHash
       || savedBootSettings?.admin?.emailHash
-      || '7932b2e116b076a54f452848eaabd5857f61bd957fe8a218faf216f24c9885bb'
+      || DEFAULT_ADMIN_EMAIL_HASH
   ).trim().toLowerCase(),
-  ADMIN_PASS_HASH:  String(
-    runtimeBootConfig.adminPassHash
-      || savedBootSettings?.admin?.passHash
-      || '3000469c6ac090455517d86664eb13cb638069d961445e522a3fbec30f07f066'
-  ).trim().toLowerCase(),
+  ADMIN_PASS_HASHES: [...runtimeAdminPassHashes, ...savedAdminPassHashes, ...DEFAULT_ADMIN_PASS_HASHES]
+    .map((hash) => String(hash || '').trim().toLowerCase())
+    .filter((hash, idx, arr) => /^[a-f0-9]{64}$/.test(hash) && arr.indexOf(hash) === idx),
 };
 const SUPABASE_PROJECT_REF = 'fbulitfyarmnyegxduqy';
 const SUPABASE_SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/sql/new`;
@@ -3153,13 +3162,14 @@ async function sha256Hex(value) {
 
 async function verifyAdminCredentials(email, pwd) {
   const allowedEmailHash = String(CFG.ADMIN_EMAIL_HASH || '').trim().toLowerCase();
-  const allowedPassHash = String(CFG.ADMIN_PASS_HASH || '').trim().toLowerCase();
-  if (!allowedEmailHash || !allowedPassHash) return false;
+  const allowedPassHashes = Array.isArray(CFG.ADMIN_PASS_HASHES) ? CFG.ADMIN_PASS_HASHES : [];
+  if (!allowedEmailHash || !allowedPassHashes.length) return false;
   const [emailHash, passHash] = await Promise.all([
     sha256Hex(String(email || '').trim().toLowerCase()),
     sha256Hex(String(pwd || '')),
   ]);
-  return safeHashCompare(emailHash, allowedEmailHash) && safeHashCompare(passHash, allowedPassHash);
+  return safeHashCompare(emailHash, allowedEmailHash)
+    && allowedPassHashes.some((allowedHash) => safeHashCompare(passHash, allowedHash));
 }
 
 async function doAdminLogin() {
