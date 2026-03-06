@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifetime-store-v1';
+const CACHE_NAME = 'lifetime-store-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

@@ -3713,8 +3713,9 @@ function toastOnce(cacheKey, type, title, msg, ttlMs = 2 * 60 * 60 * 1000) {
 // INSTALL PROMPT (PWA APP INSTALL)
 // ============================================================
 const INSTALL_PROMPT_DELAY_MS = 7000;
-const INSTALL_PROMPT_DISMISS_KEY = 'lt_install_prompt_dismiss_until';
-const INSTALL_PROMPT_SNOOZE_MS = 18 * 60 * 60 * 1000;
+const INSTALL_PROMPT_DISMISS_KEY = 'lt_install_prompt_dismiss_until_v2';
+const INSTALL_PROMPT_SESSION_KEY = 'lt_install_prompt_seen_session_v2';
+const INSTALL_PROMPT_SNOOZE_MS = 4 * 60 * 60 * 1000;
 let deferredInstallPrompt = null;
 let installPromptTimer = null;
 
@@ -3726,6 +3727,12 @@ function isStandaloneApp() {
 function isIosLikeDevice() {
   const ua = String(navigator.userAgent || '').toLowerCase();
   return /iphone|ipad|ipod/.test(ua);
+}
+
+function isInstallContextSecure() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  if (window.isSecureContext) return true;
+  return host === 'localhost' || host === '127.0.0.1';
 }
 
 function installPromptElements() {
@@ -3741,7 +3748,10 @@ function shouldShowInstallPrompt() {
   const { wrap } = installPromptElements();
   if (!wrap) return false;
   if (isStandaloneApp()) return false;
-  if (!deferredInstallPrompt && !isIosLikeDevice()) return false;
+  if (!isInstallContextSecure()) return false;
+  try {
+    if (sessionStorage.getItem(INSTALL_PROMPT_SESSION_KEY) === '1') return false;
+  } catch (_) {}
   try {
     const dismissUntil = Number(localStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) || '0');
     if (dismissUntil && Date.now() < dismissUntil) return false;
@@ -3754,6 +3764,7 @@ function hideInstallPrompt(snoozeMs = INSTALL_PROMPT_SNOOZE_MS) {
   if (!wrap) return;
   wrap.classList.remove('show');
   wrap.setAttribute('aria-hidden', 'true');
+  try { sessionStorage.setItem(INSTALL_PROMPT_SESSION_KEY, '1'); } catch (_) {}
   if (Number.isFinite(Number(snoozeMs)) && Number(snoozeMs) > 0) {
     try {
       localStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, String(Date.now() + Number(snoozeMs)));
@@ -3766,10 +3777,13 @@ function showInstallPrompt() {
   const { wrap, action } = installPromptElements();
   if (!wrap) return;
   if (action) {
-    action.textContent = deferredInstallPrompt ? 'Install App' : 'How To Install';
+    action.textContent = deferredInstallPrompt
+      ? 'Install App'
+      : (isIosLikeDevice() ? 'Add to Home Screen' : 'Install Guide');
   }
   wrap.classList.add('show');
   wrap.setAttribute('aria-hidden', 'false');
+  try { sessionStorage.setItem(INSTALL_PROMPT_SESSION_KEY, '1'); } catch (_) {}
 }
 
 function scheduleInstallPrompt() {
@@ -3829,7 +3843,11 @@ function bindInstallPromptUi() {
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    scheduleInstallPrompt();
+    if (document.getElementById('installPrompt')?.classList.contains('show')) {
+      showInstallPrompt();
+    } else {
+      scheduleInstallPrompt();
+    }
   });
 
   window.addEventListener('appinstalled', () => {
@@ -3842,6 +3860,7 @@ function bindInstallPromptUi() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
+  if (!isInstallContextSecure()) return;
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((error) => {
       console.warn('Service worker registration failed:', error?.message || error);
