@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // CONFIG — All keys for testing environment
 // ============================================================
 const savedBootSettings = (() => {
@@ -3612,6 +3612,138 @@ function toastOnce(cacheKey, type, title, msg, ttlMs = 2 * 60 * 60 * 1000) {
 }
 
 // ============================================================
+// INSTALL PROMPT (PWA DOWNLOAD)
+// ============================================================
+const INSTALL_PROMPT_DELAY_MS = 7000;
+const INSTALL_PROMPT_DISMISS_KEY = 'lt_install_prompt_dismiss_until';
+const INSTALL_PROMPT_SNOOZE_MS = 18 * 60 * 60 * 1000;
+let deferredInstallPrompt = null;
+let installPromptTimer = null;
+
+function isStandaloneApp() {
+  return Boolean(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone === true;
+}
+
+function installPromptElements() {
+  return {
+    wrap: document.getElementById('installPrompt'),
+    close: document.getElementById('installPromptClose'),
+    action: document.getElementById('installPromptBtn'),
+    later: document.getElementById('installPromptLater'),
+  };
+}
+
+function shouldShowInstallPrompt() {
+  const { wrap } = installPromptElements();
+  if (!wrap) return false;
+  if (isStandaloneApp()) return false;
+  try {
+    const dismissUntil = Number(localStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) || '0');
+    if (dismissUntil && Date.now() < dismissUntil) return false;
+  } catch (_) {}
+  return true;
+}
+
+function hideInstallPrompt(snoozeMs = INSTALL_PROMPT_SNOOZE_MS) {
+  const { wrap } = installPromptElements();
+  if (!wrap) return;
+  wrap.classList.remove('show');
+  wrap.setAttribute('aria-hidden', 'true');
+  if (Number.isFinite(Number(snoozeMs)) && Number(snoozeMs) > 0) {
+    try {
+      localStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, String(Date.now() + Number(snoozeMs)));
+    } catch (_) {}
+  }
+}
+
+function showInstallPrompt() {
+  if (!shouldShowInstallPrompt()) return;
+  const { wrap } = installPromptElements();
+  if (!wrap) return;
+  wrap.classList.add('show');
+  wrap.setAttribute('aria-hidden', 'false');
+}
+
+function scheduleInstallPrompt() {
+  if (!shouldShowInstallPrompt()) return;
+  if (installPromptTimer) window.clearTimeout(installPromptTimer);
+  installPromptTimer = window.setTimeout(() => {
+    showInstallPrompt();
+  }, INSTALL_PROMPT_DELAY_MS);
+}
+
+async function triggerInstallPrompt() {
+  if (deferredInstallPrompt) {
+    try {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (choice?.outcome === 'accepted') {
+        hideInstallPrompt(7 * 24 * 60 * 60 * 1000);
+        toast('ok', 'App Installed', 'Lifetime Technology app is ready on your device.');
+        return;
+      }
+      hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS);
+      return;
+    } catch (_) {
+      hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS);
+      toast('inf', 'Install Tip', 'Use your browser menu and choose Install app.');
+      return;
+    }
+  }
+
+  hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS);
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) {
+    toast('inf', 'Install Tip', 'Open Share and tap Add to Home Screen.');
+  } else {
+    toast('inf', 'Install Tip', 'Open browser menu and choose Install app.');
+  }
+}
+
+function bindInstallPromptUi() {
+  const { wrap, close, action, later } = installPromptElements();
+  if (!wrap) return;
+  wrap.setAttribute('aria-hidden', 'true');
+
+  if (close && !close.dataset.bound) {
+    close.addEventListener('click', () => hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS));
+    close.dataset.bound = '1';
+  }
+  if (later && !later.dataset.bound) {
+    later.addEventListener('click', () => hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS));
+    later.dataset.bound = '1';
+  }
+  if (action && !action.dataset.bound) {
+    action.addEventListener('click', triggerInstallPrompt);
+    action.dataset.bound = '1';
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    scheduleInstallPrompt();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    hideInstallPrompt(7 * 24 * 60 * 60 * 1000);
+  });
+
+  scheduleInstallPrompt();
+}
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('Service worker registration failed:', error?.message || error);
+    });
+  });
+}
+
+// ============================================================
 // MOBILE SIDEBAR
 // ============================================================
 function isMobileViewport() {
@@ -3690,6 +3822,8 @@ window.addEventListener('resize', syncSidebarForViewport);
 })();
 
 (async function init() {
+  registerServiceWorker();
+  bindInstallPromptUi();
   const initialCategory = getCategoryFromUrl();
   if (initialCategory) currentCat = initialCategory;
   storefrontMode = isJewelryCategory(currentCat) ? 'jewerlys' : 'electronics';

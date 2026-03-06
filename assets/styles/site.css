@@ -1,4 +1,4 @@
-﻿/* ===================== CSS VARIABLES (LIGHT THEME) ===================== */
+/* ===================== CSS VARIABLES (LIGHT THEME) ===================== */
 :root {
   --outer-bg:   #F5F5F5;
   --bg:         #F9F9F9;
@@ -495,6 +495,111 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text2);vertical-align:midd
 .t-text strong{font-size:13px;font-weight:600;color:var(--text)}
 .t-text p{font-size:12px;color:var(--text3)}
 
+/* ===================== INSTALL PROMPT ===================== */
+.install-prompt{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  width:min(360px,calc(100vw - 24px));
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow-lg);
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:10px 12px;
+  padding:14px 14px 12px;
+  z-index:998;
+  opacity:0;
+  transform:translateY(14px);
+  pointer-events:none;
+  transition:opacity .22s ease, transform .22s ease;
+}
+.install-prompt.show{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+.ip-close{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--bg);
+  color:var(--text3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:var(--trans);
+}
+.ip-close:hover{
+  border-color:var(--primary-md);
+  color:var(--primary);
+  background:var(--primary-lt);
+}
+.ip-close svg{width:12px;height:12px}
+.ip-icon{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:var(--primary-lt);
+  border:1px solid var(--primary-md);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.ip-icon img{width:24px;height:24px}
+.ip-copy strong{
+  display:block;
+  font-family:var(--font-d);
+  font-size:14px;
+  font-weight:800;
+  color:var(--text);
+  line-height:1.2;
+  padding-right:22px;
+}
+.ip-copy p{
+  margin-top:4px;
+  font-size:12px;
+  color:var(--text3);
+  line-height:1.5;
+}
+.ip-actions{
+  grid-column:1 / -1;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:2px;
+}
+.ip-btn{
+  height:34px;
+  border-radius:10px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:700;
+  border:1px solid var(--border);
+  transition:var(--trans);
+}
+.ip-btn-primary{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#fff;
+}
+.ip-btn-primary:hover{background:#ea6c0a}
+.ip-btn-ghost{
+  background:var(--white);
+  color:var(--text2);
+}
+.ip-btn-ghost:hover{
+  border-color:var(--primary-md);
+  color:var(--primary);
+  background:var(--primary-lt);
+}
+
 /* ===================== MISC ===================== */
 .tag-chip{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;background:var(--bg);color:var(--text3)}
 .loader{display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--text3);font-size:13px}
@@ -557,6 +662,13 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text2);vertical-align:midd
   .admin-body{padding:16px 14px 30px}
   .page{padding:22px 16px 24px}
   #page-explore,#page-checkout{padding-top:20px}
+  .install-prompt{
+    left:12px;
+    right:12px;
+    bottom:12px;
+    width:auto;
+    border-radius:14px;
+  }
 }
 @media(max-width:600px){
   .admin-stats-row{grid-template-columns:1fr}
