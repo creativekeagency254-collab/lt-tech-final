@@ -2963,3 +2963,42 @@ body.sidebar-collapsed .theme-switcher {
     background: var(--bg);
   }
 }
+
+/* Desktop: make dark-mode sidebar retract exactly like light mode */
+@media (min-width: 901px) {
+  body.sidebar-collapsed .sidebar {
+    width: 84px !important;
+    min-width: 84px;
+    max-width: 84px;
+  }
+
+  body.sidebar-collapsed .sidebar-body {
+    overflow-x: hidden;
+  }
+
+  body.sidebar-collapsed .sidebar-bottom {
+    display: flex;
+    justify-content: center;
+    padding: 10px 8px;
+  }
+
+  body.sidebar-collapsed .theme-switcher {
+    width: 38px !important;
+    height: 38px;
+    min-height: 38px;
+    margin: 0 auto;
+    padding: 0 !important;
+    border-radius: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  body.sidebar-collapsed .theme-switcher .ts-icon {
+    margin: 0;
+  }
+
+  html[data-theme="dark"] body.sidebar-collapsed .sidebar::before,
+  html[data-theme="dark"] body.sidebar-collapsed .sidebar::after {
+    display: none !important;
+  }
+}
