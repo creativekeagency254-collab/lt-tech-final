@@ -4016,9 +4016,11 @@ function toggleTheme() {
 }
 // Load saved theme on startup
 (function() {
-  const saved = localStorage.getItem('ltTheme') || 'light';
-  document.getElementById('appRoot').setAttribute('data-theme', saved === 'dark' ? 'dark' : 'light');
-  syncThemeToggleUi(saved === 'dark' ? 'dark' : 'light');
+  const DEFAULT_THEME = 'light';
+  const saved = localStorage.getItem('ltTheme');
+  const safeTheme = saved === 'dark' || saved === 'light' ? saved : DEFAULT_THEME;
+  document.getElementById('appRoot').setAttribute('data-theme', safeTheme);
+  syncThemeToggleUi(safeTheme);
 })();
 
 function getBrandingAdditionsFromControls() {
