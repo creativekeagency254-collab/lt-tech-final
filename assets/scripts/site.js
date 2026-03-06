@@ -4034,6 +4034,10 @@ function toggleTheme() {
   root.setAttribute('data-theme', newTheme);
   localStorage.setItem('ltTheme', newTheme);
   syncThemeToggleUi(newTheme);
+  if (isMobileViewport()) {
+    document.body.classList.remove('sidebar-collapsed');
+    setMobileSidebarOpen(false);
+  }
   requestAnimationFrame(resetHorizontalViewportShift);
 }
 // Load saved theme on startup
