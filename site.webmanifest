@@ -1,12 +1,17 @@
 {
+  "id": "/",
   "name": "Lifetime Technology Store",
   "short_name": "Lifetime Tech",
   "description": "Electronics, phones, smart devices, and jewelry store.",
   "start_url": "/",
   "scope": "/",
+  "display_override": ["standalone", "minimal-ui"],
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "categories": ["shopping", "lifestyle", "business"],
   "icons": [
     {
       "src": "/favicon.svg",

@@ -3699,7 +3699,7 @@ function toastOnce(cacheKey, type, title, msg, ttlMs = 2 * 60 * 60 * 1000) {
 }
 
 // ============================================================
-// INSTALL PROMPT (PWA DOWNLOAD)
+// INSTALL PROMPT (PWA APP INSTALL)
 // ============================================================
 const INSTALL_PROMPT_DELAY_MS = 7000;
 const INSTALL_PROMPT_DISMISS_KEY = 'lt_install_prompt_dismiss_until';
@@ -3710,6 +3710,11 @@ let installPromptTimer = null;
 function isStandaloneApp() {
   return Boolean(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
     || window.navigator.standalone === true;
+}
+
+function isIosLikeDevice() {
+  const ua = String(navigator.userAgent || '').toLowerCase();
+  return /iphone|ipad|ipod/.test(ua);
 }
 
 function installPromptElements() {
@@ -3725,6 +3730,7 @@ function shouldShowInstallPrompt() {
   const { wrap } = installPromptElements();
   if (!wrap) return false;
   if (isStandaloneApp()) return false;
+  if (!deferredInstallPrompt && !isIosLikeDevice()) return false;
   try {
     const dismissUntil = Number(localStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) || '0');
     if (dismissUntil && Date.now() < dismissUntil) return false;
@@ -3746,8 +3752,11 @@ function hideInstallPrompt(snoozeMs = INSTALL_PROMPT_SNOOZE_MS) {
 
 function showInstallPrompt() {
   if (!shouldShowInstallPrompt()) return;
-  const { wrap } = installPromptElements();
+  const { wrap, action } = installPromptElements();
   if (!wrap) return;
+  if (action) {
+    action.textContent = deferredInstallPrompt ? 'Install App' : 'How To Install';
+  }
   wrap.classList.add('show');
   wrap.setAttribute('aria-hidden', 'false');
 }
@@ -3768,7 +3777,7 @@ async function triggerInstallPrompt() {
       deferredInstallPrompt = null;
       if (choice?.outcome === 'accepted') {
         hideInstallPrompt(7 * 24 * 60 * 60 * 1000);
-        toast('ok', 'App Installed', 'Lifetime Technology app is ready on your device.');
+        toast('ok', 'App Installed', 'Installed as a standalone app window.');
         return;
       }
       hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS);
@@ -3781,8 +3790,7 @@ async function triggerInstallPrompt() {
   }
 
   hideInstallPrompt(INSTALL_PROMPT_SNOOZE_MS);
-  const ua = navigator.userAgent.toLowerCase();
-  if (/iphone|ipad|ipod/.test(ua)) {
+  if (isIosLikeDevice()) {
     toast('inf', 'Install Tip', 'Open Share and tap Add to Home Screen.');
   } else {
     toast('inf', 'Install Tip', 'Open browser menu and choose Install app.');
