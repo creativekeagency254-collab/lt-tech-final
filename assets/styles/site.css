@@ -2716,3 +2716,12 @@ textarea:focus-visible,
   color: inherit !important;
   stroke: currentColor !important;
 }
+
+/* ===================== LIGHT MODE: CRISP VANTA BLACK TEXT ===================== */
+#appRoot[data-theme="light"] {
+  --text: #050505;
+  --text2: #111111;
+  --text3: #2a2a2a;
+  --text4: #4b4b4b;
+  --text5: #6e6e6e;
+}
