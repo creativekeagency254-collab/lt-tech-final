@@ -1,4 +1,4 @@
-# Life Time Technology Store
+# Lifetime Technology Store
 
 Official domain: https://lifetimetechnology.store
 Primary region: Kenya
@@ -11,7 +11,7 @@ Primary currency: KES
 
 ## Main Categories
 - Electronics: smartphones, laptops, watches, audio, tablets, kitchen-accessories, gaming, smart-home
-- Jewelry: jewerlys, jewelry-necklaces, jewelry-rings, jewelry-bracelets, jewelry-earrings, jewelry-watches
+- Jewelry: jewelry (legacy internal slug `jewerlys`), jewelry-necklaces, jewelry-rings, jewelry-bracelets, jewelry-earrings, jewelry-watches
 
 ## URL Patterns
 - Homepage: https://lifetimetechnology.store/

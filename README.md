@@ -1,4 +1,4 @@
-# Life Time Limited Website
+# Lifetime Limited Website
 
 Clean static website setup for easy deployment to Vercel.
 

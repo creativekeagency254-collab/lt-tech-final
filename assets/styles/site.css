@@ -2547,6 +2547,13 @@ textarea:focus-visible,
   }
 }
 
+/* Laptop-only: make product cards 10% taller without changing mobile/desktop UX */
+@media (min-width: 901px) and (max-width: 1440px) {
+  #productsGrid .p-card .p-card-img {
+    aspect-ratio: 10 / 13.2;
+  }
+}
+
 /* ===================== DARK MODE: CHARCOAL VANTA + SILVER GLARE ===================== */
 [data-theme="dark"] {
   --outer-bg: #020203;
@@ -2644,4 +2651,29 @@ textarea:focus-visible,
   background: rgba(14, 16, 19, 0.9) !important;
   border-color: rgba(194, 203, 215, 0.58) !important;
   color: #eceff4 !important;
+}
+
+/* ===================== HEADER + CHECKOUT VISIBILITY FIXES ===================== */
+#appRoot[data-theme="light"] .topbar {
+  border: 1px solid #111 !important;
+}
+
+[data-theme="dark"] .cd-checkout-btn,
+[data-theme="dark"] #btnConfirmPay.btn-cta.blue {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9) !important;
+  color: #031522 !important;
+  border: 1px solid rgba(186, 230, 253, 0.95) !important;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.45) !important;
+}
+
+[data-theme="dark"] .cd-checkout-btn:hover,
+[data-theme="dark"] #btnConfirmPay.btn-cta.blue:hover {
+  background: linear-gradient(135deg, #67e8f9, #38bdf8) !important;
+  color: #04121a !important;
+}
+
+[data-theme="dark"] .cd-checkout-btn svg,
+[data-theme="dark"] #btnConfirmPay.btn-cta.blue svg {
+  color: inherit !important;
+  stroke: currentColor !important;
 }

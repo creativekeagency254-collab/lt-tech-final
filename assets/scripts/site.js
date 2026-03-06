@@ -1219,12 +1219,22 @@ const FOOTER_INFO_CONTENT = {
 };
 
 function normalizeCategoryValue(value) {
-  return String(value || '')
+  const normalized = String(value || '')
     .trim()
     .toLowerCase()
     .replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+  if (['jewelry', 'jewelery', 'jewellery', 'jewelrys', 'jewelries', 'jewelry-picks'].includes(normalized)) {
+    return 'jewerlys';
+  }
+  return normalized;
+}
+
+function toPublicCategorySlug(category) {
+  const normalized = normalizeCategoryValue(category);
+  if (normalized === 'jewerlys') return 'jewelry';
+  return normalized;
 }
 
 function humanizeCategorySlug(slug) {
@@ -1557,9 +1567,10 @@ function setSeoTitle(text) {
 function buildCanonical(params = {}) {
   const url = new URL(SEO_BASE_URL);
   const category = normalizeCategoryValue(params.category || '');
+  const publicCategory = toPublicCategorySlug(category);
   const query = String(params.query || '').trim();
   const product = String(params.product || '').trim();
-  if (category && category !== 'all') url.searchParams.set('category', category);
+  if (publicCategory && publicCategory !== 'all') url.searchParams.set('category', publicCategory);
   if (query) url.searchParams.set('q', query);
   if (product) url.searchParams.set('product', product);
   return url.toString();
@@ -1830,9 +1841,10 @@ function updateSeoForCurrentView() {
 function syncCategoryInUrl(cat) {
   if (!window.history || typeof window.history.replaceState !== 'function') return;
   const normalized = normalizeCategoryValue(cat) || 'all';
+  const publicCategory = toPublicCategorySlug(normalized);
   const url = new URL(window.location.href);
   if (normalized === 'all') url.searchParams.delete('category');
-  else url.searchParams.set('category', normalized);
+  else url.searchParams.set('category', publicCategory);
   url.searchParams.delete('product');
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 }
@@ -1841,7 +1853,7 @@ function setStorefrontMode(mode, opts = {}) {
   const preserveCategory = opts.preserveCategory !== false;
   storefrontMode = mode === 'jewerlys' ? 'jewerlys' : 'electronics';
   const tgElectronics = document.getElementById('tgElectronics');
-  const tgJewerlys = document.getElementById('tgJewerlys');
+  const tgJewerlys = document.getElementById('tgJewelry') || document.getElementById('tgJewerlys');
   if (tgElectronics) tgElectronics.classList.toggle('active', storefrontMode === 'electronics');
   if (tgJewerlys) tgJewerlys.classList.toggle('active', storefrontMode === 'jewerlys');
   renderImageMarquee(storefrontMode);
@@ -2189,8 +2201,8 @@ function renderDetailInfo(p) {
     </div>
     <div class="d-actions">
       <button class="btn-secondary" onclick="addToCartDetail()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        Add to Basket
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 7H7"/></svg>
+        Add to Cart
       </button>
       <button class="btn-primary" onclick="buyNow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -2256,7 +2268,7 @@ function addToCart(product, qty, variant) {
   else { cart.push({ key, productId:product.id, name:product.name, brand:product.brand, price:Number(product.price), variant:variantLabel, qty, image:product.images?.[0]||null, category:product.category }); }
   localStorage.setItem('ltl2_cart', JSON.stringify(cart));
   updateCartUI();
-  toast('ok', 'Added to Basket', `${product.name}${variantLabel?' · '+variantLabel:''}`);
+  toast('ok', 'Added to Cart', `${product.name}${variantLabel?' · '+variantLabel:''}`);
 }
 
 function quickAdd(id) {
@@ -2293,7 +2305,7 @@ function removeFromCart(key) {
 function removeFromCheckout(key) {
   removeFromCart(key);
   if (!cart.length) {
-    toast('inf', 'Basket Updated', 'Your basket is now empty.');
+    toast('inf', 'Cart Updated', 'Your cart is now empty.');
     navigate('explore');
     return;
   }
@@ -2325,7 +2337,7 @@ function renderCartDrawer() {
   const footer = document.getElementById('cdFooter');
   if (!cart.length) {
     wrap.innerHTML = `<div class="cd-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 7H7"/></svg>
       <h4>Your cart is empty</h4>
       <p>Add products to your cart to view pricing and checkout details.</p>
       <button class="btn-cta outline" style="width:auto;padding:10px 16px;" onclick="closeCart();navigate('explore')">Explore Products</button>
@@ -2400,7 +2412,7 @@ function closeCart() {
 // CHECKOUT — TIMELINE (4 steps)
 // ============================================================
 function goCheckout() {
-  if (!cart.length) { toast('err','Basket is empty','Add items first'); return; }
+  if (!cart.length) { toast('err','Cart is empty','Add items first'); return; }
   ckStep = 1; ckData = {}; deliveryFee = 0;
   navigate('checkout');
   renderCkTimeline();
@@ -2409,7 +2421,7 @@ function goCheckout() {
 }
 
 function renderCkTimeline() {
-  const labels = ['Basket','Your Details','Payment','Done'];
+  const labels = ['Cart','Your Details','Payment','Done'];
   const progW = [0, 33, 66, 100];
   document.getElementById('tlProgress').style.width = progW[ckStep-1] + '%';
   [1,2,3,4].forEach(i => {
@@ -2428,13 +2440,13 @@ function renderCkTimeline() {
 function renderCkStep() {
   const area = document.getElementById('ckMainArea');
   if (ckStep === 1) {
-    // Step 1: Review basket + Delivery zone
+    // Step 1: Review cart + Delivery zone
     const zoneOpts = Object.entries(DELIVERY_ZONES.reduce((acc,z) => { if(!acc[z.region])acc[z.region]=[]; acc[z.region].push(z); return acc; },{}))
       .map(([r,zones]) => `<optgroup label="${r}">${zones.map(z=>`<option value="${z.area}|${z.fee}|${z.days}">${z.area} — KES ${z.fee} (${z.days})</option>`).join('')}</optgroup>`).join('');
     area.innerHTML = `<div class="ck-main">
       <h3>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        Review Your Basket
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 7H7"/></svg>
+        Review Your Cart
       </h3>
       ${cart.map(item => {
         const safeKey = escapeJsSingleQuote(item.key);
@@ -2589,7 +2601,7 @@ function renderCkSummary() {
 }
 
 function checkoutHelpMessage() {
-  const stepLabel = ['Basket', 'Your Details', 'Payment', 'Done'][Math.max(0, Math.min(3, ckStep - 1))];
+  const stepLabel = ['Cart', 'Your Details', 'Payment', 'Done'][Math.max(0, Math.min(3, ckStep - 1))];
   const area = ckData.deliveryZone ? ckData.deliveryZone.split('|')[0] : 'Not selected yet';
   const total = (cartTotal() + deliveryFee).toLocaleString();
   const topItems = cart.slice(0, 4).map((item) => `${item.name} x${item.qty}`).join(', ') || 'No items yet';
@@ -2851,7 +2863,7 @@ async function processPayment() {
       return;
     }
     if (!toPaystackAmount(total)) {
-      toast('err', 'Payment Error', 'Checkout total is invalid. Please refresh your basket and retry.');
+      toast('err', 'Payment Error', 'Checkout total is invalid. Please refresh your cart and retry.');
       return;
     }
     let paystackReady = false;
@@ -2892,7 +2904,7 @@ async function processPayment() {
           await saveOrder(orderNum, 'paystack', 'paid', total, ref);
           completeOrder(orderNum, 'Paystack', invoice);
         },
-        () => toast('inf','Payment cancelled','Your basket is saved'),
+        () => toast('inf','Payment cancelled','Your cart is saved'),
         (error) => {
           const details = String(error?.message || '').trim();
           toast('err', 'Payment Error', details ? `Paystack error: ${details}` : 'Payment failed. Retry payment or use WhatsApp.');
