@@ -50,6 +50,21 @@ create table if not exists public.orders (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.store_categories (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  name text not null,
+  scope text not null check (scope in ('electronics', 'jewerlys')),
+  active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_store_categories_scope on public.store_categories(scope);
+create index if not exists idx_store_categories_active on public.store_categories(active);
+create index if not exists idx_store_categories_sort on public.store_categories(sort_order, name);
+
 -- Upgrade existing installations (older schemas) safely.
 alter table public.products add column if not exists slug text;
 alter table public.products add column if not exists category text;
@@ -159,6 +174,46 @@ exception when others then
 end
 $$;
 
+alter table public.store_categories add column if not exists slug text;
+alter table public.store_categories add column if not exists name text;
+alter table public.store_categories add column if not exists scope text;
+alter table public.store_categories add column if not exists active boolean default true;
+alter table public.store_categories add column if not exists sort_order integer default 0;
+alter table public.store_categories add column if not exists created_at timestamptz default now();
+alter table public.store_categories add column if not exists updated_at timestamptz default now();
+
+update public.store_categories set name = coalesce(nullif(trim(name), ''), initcap(replace(slug, '-', ' ')));
+update public.store_categories
+set slug = lower(regexp_replace(coalesce(slug, name, gen_random_uuid()::text), '[^a-z0-9]+', '-', 'g'))
+where slug is null or slug = '';
+update public.store_categories set scope = 'electronics' where scope is null or scope = '';
+update public.store_categories set active = true where active is null;
+update public.store_categories set sort_order = 0 where sort_order is null;
+update public.store_categories set created_at = now() where created_at is null;
+update public.store_categories set updated_at = now() where updated_at is null;
+update public.store_categories set scope = 'electronics' where scope not in ('electronics', 'jewerlys');
+
+alter table public.store_categories alter column active set default true;
+alter table public.store_categories alter column sort_order set default 0;
+alter table public.store_categories alter column created_at set default now();
+alter table public.store_categories alter column updated_at set default now();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'store_categories_slug_key'
+      and conrelid = 'public.store_categories'::regclass
+  ) then
+    alter table public.store_categories add constraint store_categories_slug_key unique (slug);
+  end if;
+exception when others then
+  -- keep migration idempotent even if legacy data has duplicate slugs
+  null;
+end
+$$;
+
 create index if not exists idx_orders_created_at on public.orders(created_at desc);
 create index if not exists idx_orders_payment_status on public.orders(payment_status);
 create index if not exists idx_orders_order_status on public.orders(order_status);
@@ -183,8 +238,14 @@ create trigger trg_orders_updated_at
 before update on public.orders
 for each row execute function public.set_updated_at();
 
+drop trigger if exists trg_store_categories_updated_at on public.store_categories;
+create trigger trg_store_categories_updated_at
+before update on public.store_categories
+for each row execute function public.set_updated_at();
+
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
+alter table public.store_categories enable row level security;
 
 do $$
 begin
@@ -207,6 +268,18 @@ begin
   ) then
     create policy orders_public_all
       on public.orders
+      for all
+      using (true)
+      with check (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public' and tablename = 'store_categories' and policyname = 'store_categories_public_all'
+  ) then
+    create policy store_categories_public_all
+      on public.store_categories
       for all
       using (true)
       with check (true);
@@ -304,3 +377,4 @@ set
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.products to anon, authenticated;
 grant select, insert, update, delete on public.orders to anon, authenticated;
+grant select, insert, update, delete on public.store_categories to anon, authenticated;

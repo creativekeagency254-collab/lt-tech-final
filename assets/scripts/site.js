@@ -388,6 +388,10 @@ let marqueeImageState = {
   electronics: [...DEFAULT_MARQUEE_IMAGES.electronics],
   jewerlys: [...DEFAULT_MARQUEE_IMAGES.jewerlys],
 };
+let customCategoryState = {
+  electronics: [],
+  jewerlys: [],
+};
 
 function setDbStatus(label, color) {
   const el = document.getElementById('aStatDb');
@@ -828,6 +832,10 @@ function catIcon(cat) {
     watches:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/></svg>`,
     audio:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>`,
     tablets:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
+    cameras:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4l2-3h4l2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+    'tv-home-entertainment':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>`,
+    networking:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M6 18v-4"/><path d="M10 18v-7"/><path d="M14 18v-5"/><path d="M18 18v-9"/></svg>`,
+    'computer-accessories':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="10" rx="2"/><path d="M8 20h8"/><path d="M12 14v6"/></svg>`,
     'kitchen-accessories':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a3 3 0 0 0 6 0V3"/><line x1="9" y1="3" x2="9" y2="10"/><path d="M14 3h1a3 3 0 0 1 3 3v15"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,
     gaming:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><path d="M7 6h10a4 4 0 0 1 3.9 4.9l-1.1 5a3 3 0 0 1-2.93 2.35h-1.2a2 2 0 0 1-1.79-1.1l-.56-1.13a2 2 0 0 0-1.79-1.1h-.06a2 2 0 0 0-1.79 1.1l-.56 1.12a2 2 0 0 1-1.79 1.11h-1.2a3 3 0 0 1-2.93-2.34l-1.1-5A4 4 0 0 1 7 6z"/></svg>`,
     'smart-home':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V21h14V9.8"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/></svg>`,
@@ -836,6 +844,9 @@ function catIcon(cat) {
     'jewelry-bracelets':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg>`,
     'jewelry-earrings':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 0 1 8 0v4a4 4 0 0 1-8 0z"/><circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/></svg>`,
     'jewelry-watches':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="9" y="18" width="6" height="4" rx="1"/><circle cx="12" cy="12" r="5"/><polyline points="12 10 12 12 13.5 13.5"/></svg>`,
+    'jewelry-pendants':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7"/><circle cx="12" cy="15" r="5"/></svg>`,
+    'jewelry-anklets':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><path d="M16 7.5h.01"/></svg>`,
+    'jewelry-brooches':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.8 5.5 21l2-7.8L2 9h7z"/></svg>`,
     jewerlys:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 20.5 9 12 22 3.5 9 12 2"/><path d="M3.5 9h17"/></svg>`,
   };
   return m[cat] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
@@ -847,6 +858,10 @@ const DEFAULT_ELECTRONICS_CATEGORIES = [
   'watches',
   'audio',
   'tablets',
+  'cameras',
+  'tv-home-entertainment',
+  'networking',
+  'computer-accessories',
   'kitchen-accessories',
   'gaming',
   'smart-home',
@@ -859,6 +874,9 @@ const DEFAULT_JEWELRY_CATEGORIES = [
   'jewelry-bracelets',
   'jewelry-earrings',
   'jewelry-watches',
+  'jewelry-pendants',
+  'jewelry-anklets',
+  'jewelry-brooches',
 ];
 const DEFAULT_CATEGORIES = [...DEFAULT_ELECTRONICS_CATEGORIES, ...DEFAULT_JEWELRY_CATEGORIES];
 const CATEGORY_TITLE_MAP = {
@@ -868,6 +886,10 @@ const CATEGORY_TITLE_MAP = {
   watches: 'Watches & Wearables',
   audio: 'Audio',
   tablets: 'Tablets',
+  cameras: 'Cameras',
+  'tv-home-entertainment': 'TV & Home Entertainment',
+  networking: 'Networking',
+  'computer-accessories': 'Computer Accessories',
   'kitchen-accessories': 'Kitchen Accessories',
   gaming: 'Gaming Gear',
   'smart-home': 'Smart Home',
@@ -878,6 +900,9 @@ const CATEGORY_TITLE_MAP = {
   'jewelry-bracelets': 'Bracelets',
   'jewelry-earrings': 'Earrings',
   'jewelry-watches': 'Jewelry Watches',
+  'jewelry-pendants': 'Pendants',
+  'jewelry-anklets': 'Anklets',
+  'jewelry-brooches': 'Brooches',
 };
 const CATEGORY_CARD_LABEL_MAP = {
   smartphones: 'Smartphone',
@@ -885,6 +910,10 @@ const CATEGORY_CARD_LABEL_MAP = {
   watches: 'Watch',
   audio: 'Audio',
   tablets: 'Tablet',
+  cameras: 'Camera',
+  'tv-home-entertainment': 'TV',
+  networking: 'Networking',
+  'computer-accessories': 'Accessories',
   'kitchen-accessories': 'Kitchen',
   gaming: 'Gaming',
   'smart-home': 'Smart Home',
@@ -895,6 +924,9 @@ const CATEGORY_CARD_LABEL_MAP = {
   'jewelry-bracelets': 'Bracelet',
   'jewelry-earrings': 'Earrings',
   'jewelry-watches': 'Jewelry Watch',
+  'jewelry-pendants': 'Pendant',
+  'jewelry-anklets': 'Anklet',
+  'jewelry-brooches': 'Brooch',
 };
 const HEADER_TOGGLE_CATEGORIES = [...DEFAULT_JEWELRY_CATEGORIES];
 const SEO_BASE_URL = 'https://lifetimetechnology.store';
@@ -1045,11 +1077,108 @@ function normalizeCategoryValue(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+function humanizeCategorySlug(slug) {
+  return String(slug || '')
+    .split('-')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function normalizeCustomCategoryState(raw) {
+  const next = { electronics: [], jewerlys: [] };
+  if (!raw || typeof raw !== 'object') return next;
+  ['electronics', 'jewerlys'].forEach((scope) => {
+    const list = Array.isArray(raw[scope]) ? raw[scope] : [];
+    const seen = new Set();
+    list.forEach((entry) => {
+      const slug = normalizeCategoryValue(entry?.slug || entry?.name || entry);
+      if (!slug || seen.has(slug)) return;
+      seen.add(slug);
+      const name = String(entry?.name || humanizeCategorySlug(slug)).trim() || humanizeCategorySlug(slug);
+      next[scope].push({ slug, name });
+    });
+    next[scope].sort((a, b) => a.name.localeCompare(b.name));
+  });
+  return next;
+}
+
+function saveCustomCategoryState() {
+  try {
+    localStorage.setItem('ltl2_custom_categories', JSON.stringify(customCategoryState));
+  } catch (_) {}
+}
+
+function loadCustomCategoryState() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ltl2_custom_categories') || 'null'); } catch (_) {}
+  customCategoryState = normalizeCustomCategoryState(saved);
+}
+
+function getCustomCategoryEntries(scope) {
+  const key = scope === 'jewerlys' ? 'jewerlys' : 'electronics';
+  return Array.isArray(customCategoryState[key]) ? customCategoryState[key] : [];
+}
+
+function getAllCustomCategorySlugs() {
+  return [
+    ...getCustomCategoryEntries('electronics').map((c) => c.slug),
+    ...getCustomCategoryEntries('jewerlys').map((c) => c.slug),
+  ];
+}
+
+function getCustomCategoryName(slug) {
+  const target = normalizeCategoryValue(slug);
+  for (const scope of ['electronics', 'jewerlys']) {
+    const match = getCustomCategoryEntries(scope).find((entry) => entry.slug === target);
+    if (match) return match.name;
+  }
+  return '';
+}
+
+async function syncCustomCategoriesFromSupabase() {
+  if (!canUseSupabase()) return;
+  try {
+    const { data, error } = await sbAdmin
+      .from('store_categories')
+      .select('slug,name,scope,active')
+      .eq('active', true)
+      .order('name', { ascending: true });
+    if (error) throw error;
+    if (!Array.isArray(data) || !data.length) return;
+    const merged = normalizeCustomCategoryState(customCategoryState);
+    data.forEach((row) => {
+      const scope = row?.scope === 'jewerlys' ? 'jewerlys' : 'electronics';
+      const slug = normalizeCategoryValue(row?.slug || row?.name || '');
+      if (!slug) return;
+      const name = String(row?.name || humanizeCategorySlug(slug)).trim() || humanizeCategorySlug(slug);
+      const idx = merged[scope].findIndex((entry) => entry.slug === slug);
+      if (idx > -1) merged[scope][idx] = { slug, name };
+      else merged[scope].push({ slug, name });
+    });
+    merged.electronics.sort((a, b) => a.name.localeCompare(b.name));
+    merged.jewerlys.sort((a, b) => a.name.localeCompare(b.name));
+    customCategoryState = merged;
+    saveCustomCategoryState();
+  } catch (error) {
+    if (!isSchemaProblemError(error)) {
+      console.warn('Custom categories sync skipped:', error?.message || error);
+    }
+  }
+}
+
+function isCustomJewelryCategory(cat) {
+  const slug = normalizeCategoryValue(cat);
+  return getCustomCategoryEntries('jewerlys').some((entry) => entry.slug === slug);
+}
+
 function categoryDisplayName(cat) {
   const slug = normalizeCategoryValue(cat);
   if (!slug) return 'Category';
   if (CATEGORY_TITLE_MAP[slug]) return CATEGORY_TITLE_MAP[slug].replace(' & Wearables', '');
-  return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const custom = getCustomCategoryName(slug);
+  if (custom) return custom;
+  return humanizeCategorySlug(slug);
 }
 
 function categoryTitle(cat) {
@@ -1060,26 +1189,28 @@ function categoryTitle(cat) {
 
 function cardCategoryLabel(cat) {
   const slug = normalizeCategoryValue(cat);
-  return CATEGORY_CARD_LABEL_MAP[slug] || categoryDisplayName(slug);
+  return CATEGORY_CARD_LABEL_MAP[slug] || getCustomCategoryName(slug) || categoryDisplayName(slug);
 }
 
 function isJewelryCategory(cat) {
   const slug = normalizeCategoryValue(cat);
-  return DEFAULT_JEWELRY_CATEGORIES.includes(slug);
+  return DEFAULT_JEWELRY_CATEGORIES.includes(slug) || isCustomJewelryCategory(slug) || slug.startsWith('jewelry-');
 }
 
 function getAllKnownCategories() {
   const dynamic = new Set(products.map((p) => normalizeCategoryValue(p.category)).filter(Boolean));
-  return [...new Set([...DEFAULT_CATEGORIES, ...dynamic])];
+  return [...new Set([...DEFAULT_CATEGORIES, ...getAllCustomCategorySlugs(), ...dynamic])];
 }
 
 function getAvailableCategories(mode = storefrontMode) {
   const all = getAllKnownCategories();
   const isJewelryMode = mode === 'jewerlys';
   const defaults = isJewelryMode ? DEFAULT_JEWELRY_CATEGORIES : DEFAULT_ELECTRONICS_CATEGORIES;
+  const custom = getCustomCategoryEntries(mode).map((entry) => entry.slug);
   const scoped = all.filter((cat) => (isJewelryMode ? isJewelryCategory(cat) : !isJewelryCategory(cat)));
-  const extras = scoped.filter((cat) => !defaults.includes(cat)).sort((a, b) => a.localeCompare(b));
-  return [...defaults, ...extras];
+  const mergedBase = [...new Set([...defaults, ...custom])];
+  const extras = scoped.filter((cat) => !mergedBase.includes(cat)).sort((a, b) => a.localeCompare(b));
+  return [...mergedBase, ...extras];
 }
 
 function getAvailableBrands() {
@@ -2413,6 +2544,8 @@ function setAdminCatalogMode(mode, opts = {}) {
 
   const heading = document.getElementById('adminProductsHeading');
   if (heading) heading.textContent = adminCatalogMode === 'jewerlys' ? 'Jewelry Catalogue' : 'Electronics Catalogue';
+  const catScope = document.getElementById('catAddScopeLabel');
+  if (catScope) catScope.textContent = adminCatalogMode === 'jewerlys' ? 'Jewerlys' : 'Electronics';
 
   const seedBtn = document.getElementById('btnSeedJewelryAdmin');
   if (seedBtn) seedBtn.style.display = adminCatalogMode === 'jewerlys' ? 'inline-flex' : 'none';
@@ -2907,6 +3040,7 @@ window.addEventListener('resize', () => {
   loadSidebarState();
   setStorefrontMode(storefrontMode, { preserveCategory: true });
   loadStoreSettings();
+  loadCustomCategoryState();
   loadBrandingSettings();
   ensurePaystackLoaded().catch(() => {});
   updateSupabaseSetupUi('Checking schema health...');
@@ -2917,6 +3051,7 @@ window.addEventListener('resize', () => {
   updateCartUI();
   updateWishlistBadge();
   updateTopbarStats();
+  await syncCustomCategoriesFromSupabase();
   await loadProducts();
   await checkSupabaseHealth(false);
 
@@ -3327,6 +3462,108 @@ function renderCategoryManagerCards(mode = adminCatalogMode) {
       </div>
     </div>
   `).join('');
+  renderCustomCategoryList(mode);
+}
+
+function renderCustomCategoryList(mode = adminCatalogMode) {
+  const wrap = document.getElementById('customCategoryList');
+  const scopeLabel = document.getElementById('catAddScopeLabel');
+  const input = document.getElementById('newCategoryName');
+  if (scopeLabel) scopeLabel.textContent = mode === 'jewerlys' ? 'Jewerlys' : 'Electronics';
+  if (input) input.placeholder = mode === 'jewerlys' ? 'e.g. Jewelry Pendants' : 'e.g. Cameras';
+  if (!wrap) return;
+  const customEntries = getCustomCategoryEntries(mode);
+  if (!customEntries.length) {
+    wrap.innerHTML = `<div class="custom-cat-empty">No custom categories yet for ${mode === 'jewerlys' ? 'Jewerlys' : 'Electronics'}.</div>`;
+    return;
+  }
+  wrap.innerHTML = customEntries.map((entry) => `
+    <div class="custom-cat-item">
+      <div class="custom-cat-text">
+        <strong>${escapeHtml(entry.name)}</strong>
+        <span>${escapeHtml(entry.slug)}</span>
+      </div>
+      <button type="button" class="custom-cat-remove" onclick="removeCustomCategory('${escapeHtml(entry.slug)}', '${mode}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function addCustomCategory() {
+  const input = document.getElementById('newCategoryName');
+  if (!input) return;
+  const rawName = String(input.value || '').trim();
+  if (!rawName) {
+    toast('inf', 'Category Needed', 'Enter a category name first.');
+    return;
+  }
+  const mode = adminCatalogMode === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const slug = normalizeCategoryValue(rawName);
+  if (!slug) {
+    toast('err', 'Invalid Category', 'Use letters and numbers for category name.');
+    return;
+  }
+  const allExisting = new Set(getAllKnownCategories());
+  if (allExisting.has(slug)) {
+    toast('inf', 'Category Exists', `${categoryDisplayName(slug)} already exists.`);
+    input.value = '';
+    return;
+  }
+  const entry = { slug, name: rawName };
+  customCategoryState[mode] = [...getCustomCategoryEntries(mode), entry]
+    .map((item) => ({ slug: normalizeCategoryValue(item.slug), name: String(item.name || humanizeCategorySlug(item.slug)).trim() }))
+    .filter((item, idx, arr) => item.slug && arr.findIndex((x) => x.slug === item.slug) === idx)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  saveCustomCategoryState();
+
+  renderCategoryManagerCards(mode);
+  renderCategoryChips();
+  if (!getAllowedFilterCategories().includes(currentCat)) currentCat = storefrontMode === 'jewerlys' ? 'jewerlys' : 'all';
+  setCat(currentCat, { closeSidebar: false, preserveSearch: true });
+  input.value = '';
+
+  if (canUseSupabase()) {
+    try {
+      const { error } = await sbAdmin.from('store_categories').upsert([{
+        slug,
+        name: entry.name,
+        scope: mode,
+        active: true,
+      }], { onConflict: 'slug' });
+      if (error) throw error;
+    } catch (error) {
+      if (!isSchemaProblemError(error)) console.warn('Could not sync category to Supabase:', error?.message || error);
+    }
+  }
+  toast('ok', 'Category Added', `${entry.name} added to ${mode === 'jewerlys' ? 'Jewerlys' : 'Electronics'}.`);
+}
+
+async function removeCustomCategory(slug, mode = adminCatalogMode) {
+  const cleanSlug = normalizeCategoryValue(slug);
+  if (!cleanSlug) return;
+  const scope = mode === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const existing = getCustomCategoryEntries(scope).find((entry) => entry.slug === cleanSlug);
+  if (!existing) return;
+  if (!confirm(`Remove category "${existing.name}"?`)) return;
+
+  customCategoryState[scope] = getCustomCategoryEntries(scope).filter((entry) => entry.slug !== cleanSlug);
+  saveCustomCategoryState();
+  if (normalizeCategoryValue(currentCat) === cleanSlug) {
+    currentCat = scope === 'jewerlys' ? 'jewerlys' : 'all';
+  }
+
+  renderCategoryManagerCards(scope);
+  renderCategoryChips();
+  setCat(currentCat, { closeSidebar: false, preserveSearch: true });
+
+  if (canUseSupabase()) {
+    try {
+      const { error } = await sbAdmin.from('store_categories').delete().eq('slug', cleanSlug);
+      if (error) throw error;
+    } catch (error) {
+      if (!isSchemaProblemError(error)) console.warn('Could not remove category from Supabase:', error?.message || error);
+    }
+  }
+  toast('inf', 'Category Removed', existing.name);
 }
 
 function applyCatImg(cat) {

@@ -844,6 +844,39 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text2);vertical-align:midd
 
 /* Category manager */
 .cat-manager-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.custom-cat-add-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 10px 0 10px; }
+.custom-cat-list { display: grid; gap: 8px; margin-bottom: 14px; }
+.custom-cat-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.custom-cat-text strong { display: block; font-size: 12px; color: var(--text); }
+.custom-cat-text span { display: block; font-size: 11px; color: var(--text4); font-family: var(--font-m); }
+.custom-cat-remove {
+  border: 1px solid var(--border2);
+  background: var(--white);
+  color: var(--text3);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.custom-cat-remove:hover { border-color: #FCA5A5; color: #B91C1C; }
+.custom-cat-empty {
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 11.5px;
+  color: var(--text4);
+  margin-bottom: 12px;
+}
 .cat-manager-card {
   border: 1px solid var(--border); border-radius: var(--radius-lg);
   overflow: hidden; background: var(--white); transition: var(--trans);
@@ -2083,7 +2116,7 @@ textarea:focus-visible,
 }
 
 .p-card .p-card-img {
-  aspect-ratio: 10 / 11;
+  aspect-ratio: 10 / 12;
   border: none;
   border-radius: 0;
   background: #f2f4f8;
@@ -2330,7 +2363,7 @@ textarea:focus-visible,
 
 #productsGrid .p-card .p-card-img {
   display: block !important;
-  aspect-ratio: 10 / 11; /* 10% taller look */
+  aspect-ratio: 10 / 12; /* ~10% taller than previous framing */
   border-radius: 20px;
   overflow: hidden;
   position: relative;

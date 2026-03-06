@@ -542,7 +542,7 @@
           <div class="a-stat accent glass-card"><div class="asl">Products</div><div class="asv" id="aStatProd">—</div><div class="ass">In catalogue</div></div>
           <div class="a-stat"><div class="asl">Orders</div><div class="asv" id="aStatOrders">—</div><div class="ass">All time</div></div>
           <div class="a-stat"><div class="asl">Revenue (KES)</div><div class="asv" id="aStatRev">—</div><div class="ass">Paid orders</div></div>
-          <div class="a-stat"><div class="asl">Supabase</div><div class="asv" id="aStatDb" style="font-size:14px;">Connecting...</div><div class="ass">Database status</div></div>
+          <div class="a-stat" style="display:none;"><div class="asl">Supabase</div><div class="asv" id="aStatDb" style="font-size:14px;">Connecting...</div><div class="ass">Database status</div></div>
         </div>
         <!-- Products tab -->
         <div id="adminProducts">
@@ -666,6 +666,11 @@
               Category Banner Images
               <span style="font-size:12px;font-weight:500;color:var(--text3);margin-left:4px;">Category cards follow the selected admin scope (Electronics or Jewerlys)</span>
             </h4>
+            <div class="custom-cat-add-row">
+              <input class="form-input" id="newCategoryName" placeholder="e.g. Cameras" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomCategory();}"/>
+              <button type="button" class="btn-cta blue" onclick="addCustomCategory()">Add To <span id="catAddScopeLabel">Electronics</span></button>
+            </div>
+            <div id="customCategoryList" class="custom-cat-list"></div>
             <div class="cat-manager-grid" id="catManagerGrid"></div>
           </div>
 
@@ -698,8 +703,8 @@
               <div class="form-group"><label class="form-label">WhatsApp Number</label><input class="form-input" id="settingsWA" value="0705925800"/></div>
               <div class="form-group"><label class="form-label">Store Name</label><input class="form-input" id="settingsStoreName" value="Life Time Limited"/></div>
               <div class="form-group"><label class="form-label">Paystack Public Key</label><input class="form-input" value="pk_test_69283fe06fedab5b485efdae233a92be25d77c6b" readonly style="font-family:var(--font-m);font-size:12px;"/></div>
-              <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="settingsSbUrl" value="https://fbulitfyarmnyegxduqy.supabase.co" style="font-size:12px;"/></div>
-              <div class="form-group"><label class="form-label">Supabase Publishable / Anon Key</label><input class="form-input" id="settingsSbKey" value="sb_publishable_h5pygvIpbj6JaQwCiAnMSw_0MXm8Z7Q" style="font-family:var(--font-m);font-size:12px;" autocomplete="off"/></div>
+              <div class="form-group" style="display:none;"><label class="form-label">Supabase URL</label><input class="form-input" id="settingsSbUrl" value="https://fbulitfyarmnyegxduqy.supabase.co" style="font-size:12px;"/></div>
+              <div class="form-group" style="display:none;"><label class="form-label">Supabase Publishable / Anon Key</label><input class="form-input" id="settingsSbKey" value="sb_publishable_h5pygvIpbj6JaQwCiAnMSw_0MXm8Z7Q" style="font-family:var(--font-m);font-size:12px;" autocomplete="off"/></div>
             </div>
             <div class="form-group"><label class="form-label">Support Email</label><input class="form-input" id="settingsSupportEmail" value="support@lifetimeltd.co.ke"/></div>
             <div class="branding-studio">
@@ -718,11 +723,11 @@
                 <label class="brand-addition"><input type="checkbox" id="brandAddSupport"/> Priority Support</label>
               </div>
             </div>
-            <div style="background:var(--green-lt);border:1px solid #BBF7D0;border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;color:var(--green);display:flex;gap:10px;align-items:flex-start;margin-bottom:16px;">
+            <div style="display:none;background:var(--green-lt);border:1px solid #BBF7D0;border-radius:var(--radius-sm);padding:14px 16px;font-size:13px;color:var(--green);gap:10px;align-items:flex-start;margin-bottom:16px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;margin-top:1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span>Supabase sync is enabled with retry and local fallback. Check the Supabase status card in this dashboard for live connection state.</span>
             </div>
-            <div class="supabase-tools">
+            <div class="supabase-tools" style="display:none;">
               <div class="supabase-tools-head">Supabase Setup Wizard</div>
               <p id="supabaseSetupMsg">Checking schema health...</p>
               <div class="supabase-tools-row">
