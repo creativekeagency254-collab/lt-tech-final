@@ -674,6 +674,19 @@
             <div class="cat-manager-grid" id="catManagerGrid"></div>
           </div>
 
+          <div class="prod-form" style="margin-bottom:20px;">
+            <h4 style="display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Brand Manager
+              <span style="font-size:12px;font-weight:500;color:var(--text3);margin-left:4px;">Add brand options for each admin scope and sync to Supabase</span>
+            </h4>
+            <div class="custom-cat-add-row">
+              <input class="form-input" id="newBrandName" placeholder="e.g. Samsung" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomBrand();}"/>
+              <button type="button" class="btn-cta blue" onclick="addCustomBrand()">Add To <span id="brandAddScopeLabel">Electronics</span></button>
+            </div>
+            <div id="customBrandList" class="custom-cat-list"></div>
+          </div>
+
           <!-- ===== MOVING STRIP IMAGE MANAGER ===== -->
           <div class="prod-form" style="margin-bottom:20px;">
             <h4 style="display:flex;align-items:center;gap:8px;">

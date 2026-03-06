@@ -392,6 +392,10 @@ let customCategoryState = {
   electronics: [],
   jewerlys: [],
 };
+let customBrandState = {
+  electronics: [],
+  jewerlys: [],
+};
 
 function setDbStatus(label, color) {
   const el = document.getElementById('aStatDb');
@@ -1085,6 +1089,10 @@ function humanizeCategorySlug(slug) {
     .join(' ');
 }
 
+function normalizeBrandName(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
 function normalizeCustomCategoryState(raw) {
   const next = { electronics: [], jewerlys: [] };
   if (!raw || typeof raw !== 'object') return next;
@@ -1125,6 +1133,120 @@ function getAllCustomCategorySlugs() {
     ...getCustomCategoryEntries('electronics').map((c) => c.slug),
     ...getCustomCategoryEntries('jewerlys').map((c) => c.slug),
   ];
+}
+
+function normalizeCustomBrandState(raw) {
+  const next = { electronics: [], jewerlys: [] };
+  if (!raw || typeof raw !== 'object') return next;
+  ['electronics', 'jewerlys'].forEach((scope) => {
+    const list = Array.isArray(raw[scope]) ? raw[scope] : [];
+    const seen = new Set();
+    list.forEach((entry) => {
+      const slug = normalizeCategoryValue(entry?.slug || entry?.name || entry);
+      if (!slug || seen.has(slug)) return;
+      seen.add(slug);
+      const name = normalizeBrandName(entry?.name || humanizeCategorySlug(slug));
+      if (!name) return;
+      next[scope].push({ slug, name });
+    });
+    next[scope].sort((a, b) => a.name.localeCompare(b.name));
+  });
+  return next;
+}
+
+function saveCustomBrandState() {
+  try {
+    localStorage.setItem('ltl2_custom_brands', JSON.stringify(customBrandState));
+  } catch (_) {}
+}
+
+function loadCustomBrandState() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ltl2_custom_brands') || 'null'); } catch (_) {}
+  customBrandState = normalizeCustomBrandState(saved);
+}
+
+function getCustomBrandEntries(scope) {
+  const key = scope === 'jewerlys' ? 'jewerlys' : 'electronics';
+  return Array.isArray(customBrandState[key]) ? customBrandState[key] : [];
+}
+
+function getAllCustomBrandNames() {
+  return [
+    ...getCustomBrandEntries('electronics').map((entry) => entry.name),
+    ...getCustomBrandEntries('jewerlys').map((entry) => entry.name),
+  ];
+}
+
+function getBrandScopeFromCategory(category) {
+  return isJewelryCategory(category) ? 'jewerlys' : 'electronics';
+}
+
+function hasCustomBrand(name, scope) {
+  const clean = normalizeBrandName(name).toLowerCase();
+  if (!clean) return false;
+  return getCustomBrandEntries(scope).some((entry) => normalizeBrandName(entry.name).toLowerCase() === clean);
+}
+
+async function syncCustomBrandsFromSupabase() {
+  if (!canUseSupabase()) return;
+  try {
+    const { data, error } = await sbAdmin
+      .from('store_brands')
+      .select('slug,name,scope,active')
+      .eq('active', true)
+      .order('name', { ascending: true });
+    if (error) throw error;
+    if (!Array.isArray(data) || !data.length) return;
+    const merged = normalizeCustomBrandState(customBrandState);
+    data.forEach((row) => {
+      const scope = row?.scope === 'jewerlys' ? 'jewerlys' : 'electronics';
+      const slug = normalizeCategoryValue(row?.slug || row?.name || '');
+      const name = normalizeBrandName(row?.name || humanizeCategorySlug(slug));
+      if (!slug || !name) return;
+      const idx = merged[scope].findIndex((entry) => entry.slug === slug);
+      if (idx > -1) merged[scope][idx] = { slug, name };
+      else merged[scope].push({ slug, name });
+    });
+    merged.electronics.sort((a, b) => a.name.localeCompare(b.name));
+    merged.jewerlys.sort((a, b) => a.name.localeCompare(b.name));
+    customBrandState = merged;
+    saveCustomBrandState();
+  } catch (error) {
+    if (!isSchemaProblemError(error)) {
+      console.warn('Custom brands sync skipped:', error?.message || error);
+    }
+  }
+}
+
+async function upsertCustomBrand(name, scope, syncSupabase = true) {
+  const cleanName = normalizeBrandName(name);
+  const cleanScope = scope === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const slug = normalizeCategoryValue(cleanName);
+  if (!cleanName || !slug) return false;
+  if (hasCustomBrand(cleanName, cleanScope)) return true;
+
+  customBrandState[cleanScope] = [...getCustomBrandEntries(cleanScope), { slug, name: cleanName }]
+    .filter((entry, idx, arr) => entry.slug && arr.findIndex((x) => x.slug === entry.slug) === idx)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  saveCustomBrandState();
+
+  if (syncSupabase && canUseSupabase()) {
+    try {
+      const { error } = await sbAdmin.from('store_brands').upsert([{
+        slug,
+        name: cleanName,
+        scope: cleanScope,
+        active: true,
+      }], { onConflict: 'slug' });
+      if (error) throw error;
+    } catch (error) {
+      if (!isSchemaProblemError(error)) {
+        console.warn('Could not sync brand to Supabase:', error?.message || error);
+      }
+    }
+  }
+  return true;
 }
 
 function getCustomCategoryName(slug) {
@@ -1213,8 +1335,23 @@ function getAvailableCategories(mode = storefrontMode) {
   return [...mergedBase, ...extras];
 }
 
-function getAvailableBrands() {
-  return [...new Set(products.map((p) => String(p.brand || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+function getAvailableBrands(mode = adminCatalogMode) {
+  const scope = mode === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const names = [
+    ...getCustomBrandEntries(scope).map((entry) => normalizeBrandName(entry.name)),
+    ...products
+      .filter((p) => getBrandScopeFromCategory(p.category) === scope)
+      .map((p) => normalizeBrandName(p.brand)),
+  ].filter(Boolean);
+  const seen = new Set();
+  const unique = [];
+  names.forEach((name) => {
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(name);
+  });
+  return unique.sort((a, b) => a.localeCompare(b));
 }
 
 function getAllowedFilterCategories() {
@@ -2546,6 +2683,8 @@ function setAdminCatalogMode(mode, opts = {}) {
   if (heading) heading.textContent = adminCatalogMode === 'jewerlys' ? 'Jewelry Catalogue' : 'Electronics Catalogue';
   const catScope = document.getElementById('catAddScopeLabel');
   if (catScope) catScope.textContent = adminCatalogMode === 'jewerlys' ? 'Jewelry' : 'Electronics';
+  const brandScope = document.getElementById('brandAddScopeLabel');
+  if (brandScope) brandScope.textContent = adminCatalogMode === 'jewerlys' ? 'Jewelry' : 'Electronics';
 
   const seedBtn = document.getElementById('btnSeedJewelryAdmin');
   if (seedBtn) seedBtn.style.display = adminCatalogMode === 'jewerlys' ? 'inline-flex' : 'none';
@@ -2645,10 +2784,11 @@ function openProdForm(id) {
   const p = id ? products.find(x => String(x.id) === String(id)) : null;
   const wrap = document.getElementById('prodFormWrap');
   const currentCat = normalizeCategoryValue(p?.category || '');
+  const currentBrand = normalizeBrandName(p?.brand || '');
   const scopedCats = getAvailableCategories(adminCatalogMode);
   const categories = [...new Set([...scopedCats, currentCat].filter(Boolean))];
   const selectedCat = currentCat || categories[0] || (adminCatalogMode === 'jewerlys' ? 'jewerlys' : 'smartphones');
-  const brands = getAvailableBrands();
+  const brands = [...new Set([...getAvailableBrands(adminCatalogMode), currentBrand].filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const images = Array.isArray(p?.images) ? p.images.filter(Boolean) : [];
   const mainImage = images[0] || '';
   const extraImages = images.slice(1).join('\n');
@@ -2738,7 +2878,7 @@ function openProdForm(id) {
 
 async function saveProd(id) {
   const name  = document.getElementById('pf-name').value.trim();
-  const brand = document.getElementById('pf-brand').value.trim();
+  const brand = normalizeBrandName(document.getElementById('pf-brand').value);
   const cat   = normalizeCategoryValue(document.getElementById('pf-cat').value);
   const price = parseFloat(document.getElementById('pf-price').value);
   const orig  = parseFloat(document.getElementById('pf-orig').value) || null;
@@ -2761,6 +2901,27 @@ async function saveProd(id) {
     tagline: tagline || null,
     highlights,
   };
+  const productScope = getBrandScopeFromCategory(cat);
+  if (!DEFAULT_CATEGORIES.includes(cat) && !getCustomCategoryEntries(productScope).some((entry) => entry.slug === cat)) {
+    customCategoryState[productScope] = [...getCustomCategoryEntries(productScope), { slug: cat, name: humanizeCategorySlug(cat) }]
+      .filter((entry, idx, arr) => entry.slug && arr.findIndex((x) => x.slug === entry.slug) === idx)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    saveCustomCategoryState();
+    if (canUseSupabase()) {
+      try {
+        const { error } = await sbAdmin.from('store_categories').upsert([{
+          slug: cat,
+          name: humanizeCategorySlug(cat),
+          scope: productScope,
+          active: true,
+        }], { onConflict: 'slug' });
+        if (error) throw error;
+      } catch (error) {
+        if (!isSchemaProblemError(error)) console.warn('Could not sync product category to Supabase:', error?.message || error);
+      }
+    }
+  }
+  await upsertCustomBrand(brand, productScope, true);
   let dbSynced = !canUseSupabase();
   if (id) {
     const idx = products.findIndex(p => String(p.id) === String(id));
@@ -3069,6 +3230,7 @@ window.addEventListener('resize', syncSidebarForViewport);
   setStorefrontMode(storefrontMode, { preserveCategory: true });
   loadStoreSettings();
   loadCustomCategoryState();
+  loadCustomBrandState();
   loadBrandingSettings();
   ensurePaystackLoaded().catch(() => {});
   updateSupabaseSetupUi('Checking schema health...');
@@ -3080,6 +3242,7 @@ window.addEventListener('resize', syncSidebarForViewport);
   updateWishlistBadge();
   updateTopbarStats();
   await syncCustomCategoriesFromSupabase();
+  await syncCustomBrandsFromSupabase();
   await loadProducts();
   await checkSupabaseHealth(false);
 
@@ -3508,6 +3671,7 @@ function renderCategoryManagerCards(mode = adminCatalogMode) {
     </div>
   `).join('');
   renderCustomCategoryList(mode);
+  renderCustomBrandList(mode);
 }
 
 function renderCustomCategoryList(mode = adminCatalogMode) {
@@ -3529,6 +3693,29 @@ function renderCustomCategoryList(mode = adminCatalogMode) {
         <span>${escapeHtml(entry.slug)}</span>
       </div>
       <button type="button" class="custom-cat-remove" onclick="removeCustomCategory('${escapeHtml(entry.slug)}', '${mode}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+function renderCustomBrandList(mode = adminCatalogMode) {
+  const wrap = document.getElementById('customBrandList');
+  const scopeLabel = document.getElementById('brandAddScopeLabel');
+  const input = document.getElementById('newBrandName');
+  if (scopeLabel) scopeLabel.textContent = mode === 'jewerlys' ? 'Jewelry' : 'Electronics';
+  if (input) input.placeholder = mode === 'jewerlys' ? 'e.g. LTL Jewelry' : 'e.g. Samsung';
+  if (!wrap) return;
+  const entries = getCustomBrandEntries(mode);
+  if (!entries.length) {
+    wrap.innerHTML = `<div class="custom-cat-empty">No custom brands yet for ${mode === 'jewerlys' ? 'Jewelry' : 'Electronics'}.</div>`;
+    return;
+  }
+  wrap.innerHTML = entries.map((entry) => `
+    <div class="custom-cat-item">
+      <div class="custom-cat-text">
+        <strong>${escapeHtml(entry.name)}</strong>
+        <span>${escapeHtml(entry.slug)}</span>
+      </div>
+      <button type="button" class="custom-cat-remove" onclick="removeCustomBrand('${escapeHtml(entry.slug)}', '${mode}')">Remove</button>
     </div>
   `).join('');
 }
@@ -3582,6 +3769,32 @@ async function addCustomCategory() {
   toast('ok', 'Category Added', `${entry.name} added to ${mode === 'jewerlys' ? 'Jewelry' : 'Electronics'}.`);
 }
 
+async function addCustomBrand() {
+  const input = document.getElementById('newBrandName');
+  if (!input) return;
+  const rawName = String(input.value || '').trim();
+  const brandName = normalizeBrandName(rawName);
+  if (!brandName) {
+    toast('inf', 'Brand Needed', 'Enter a brand name first.');
+    return;
+  }
+  const mode = adminCatalogMode === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const existingNames = new Set(getAvailableBrands(mode).map((name) => normalizeBrandName(name).toLowerCase()));
+  if (hasCustomBrand(brandName, mode) || existingNames.has(brandName.toLowerCase())) {
+    toast('inf', 'Brand Exists', `${brandName} already exists.`);
+    input.value = '';
+    return;
+  }
+  const saved = await upsertCustomBrand(brandName, mode, true);
+  if (!saved) {
+    toast('err', 'Invalid Brand', 'Use letters and numbers for brand name.');
+    return;
+  }
+  renderCustomBrandList(mode);
+  input.value = '';
+  toast('ok', 'Brand Added', `${brandName} added to ${mode === 'jewerlys' ? 'Jewelry' : 'Electronics'}.`);
+}
+
 async function removeCustomCategory(slug, mode = adminCatalogMode) {
   const cleanSlug = normalizeCategoryValue(slug);
   if (!cleanSlug) return;
@@ -3609,6 +3822,29 @@ async function removeCustomCategory(slug, mode = adminCatalogMode) {
     }
   }
   toast('inf', 'Category Removed', existing.name);
+}
+
+async function removeCustomBrand(slug, mode = adminCatalogMode) {
+  const cleanSlug = normalizeCategoryValue(slug);
+  if (!cleanSlug) return;
+  const scope = mode === 'jewerlys' ? 'jewerlys' : 'electronics';
+  const existing = getCustomBrandEntries(scope).find((entry) => entry.slug === cleanSlug);
+  if (!existing) return;
+  if (!confirm(`Remove brand "${existing.name}"?`)) return;
+
+  customBrandState[scope] = getCustomBrandEntries(scope).filter((entry) => entry.slug !== cleanSlug);
+  saveCustomBrandState();
+  renderCustomBrandList(scope);
+
+  if (canUseSupabase()) {
+    try {
+      const { error } = await sbAdmin.from('store_brands').delete().eq('slug', cleanSlug);
+      if (error) throw error;
+    } catch (error) {
+      if (!isSchemaProblemError(error)) console.warn('Could not remove brand from Supabase:', error?.message || error);
+    }
+  }
+  toast('inf', 'Brand Removed', existing.name);
 }
 
 function applyCatImg(cat) {
