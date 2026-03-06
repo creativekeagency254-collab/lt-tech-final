@@ -1614,6 +1614,17 @@ function setCat(cat, opts = {}) {
   if (!getAllowedFilterCategories().includes(currentCat)) currentCat = storefrontMode === 'jewerlys' ? 'jewerlys' : 'all';
   if (storefrontMode === 'jewerlys' && !isJewelryCategory(currentCat)) currentCat = 'jewerlys';
   if (storefrontMode === 'electronics' && isJewelryCategory(currentCat)) currentCat = 'all';
+  let filteredProducts = filterProducts(currentCat);
+  if (!filteredProducts.length && !activeSearchQuery) {
+    const fallbackCat = storefrontMode === 'jewerlys' ? 'jewerlys' : 'all';
+    if (currentCat !== fallbackCat) {
+      const fallbackProducts = filterProducts(fallbackCat);
+      if (fallbackProducts.length) {
+        currentCat = fallbackCat;
+        filteredProducts = fallbackProducts;
+      }
+    }
+  }
   document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.f === currentCat));
   document.querySelectorAll('.nav-item[data-cat]').forEach(n => n.classList.toggle('active', n.dataset.cat === currentCat));
   setStorefrontMode(storefrontMode, { preserveCategory: false });
@@ -1621,7 +1632,7 @@ function setCat(cat, opts = {}) {
   if (currentCat === 'all') { explore.classList.add('active'); }
   else { explore.classList.remove('active'); }
   document.getElementById('productsTitle').textContent = categoryTitle(currentCat);
-  renderProducts(filterProducts(currentCat));
+  renderProducts(filteredProducts);
   if (syncUrl) syncCategoryInUrl(currentCat);
   requestAnimationFrame(ensureActiveChipVisible);
   updateSeoForCurrentView();
