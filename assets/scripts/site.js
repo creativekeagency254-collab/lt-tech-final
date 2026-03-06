@@ -561,24 +561,17 @@ async function runSupabaseWrite(factoryFn, options = {}) {
     const schemaMissing = isSchemaMissingError(error);
     const schemaOutdated = isSchemaOutdatedError(error);
     const schemaIssue = schemaMissing || schemaOutdated;
-    setDbStatus(
-      schemaIssue ? (schemaOutdated ? 'Schema Update Needed' : 'Schema Missing') : 'Sync Issue',
-      schemaIssue ? 'var(--red)' : 'var(--amber)'
-    );
+    setDbStatus('Offline / Demo', 'var(--amber)');
     if (schemaIssue) {
       supabaseHealth = { productsTable: false, ordersTable: false, schemaMissing, schemaOutdated };
-      updateSupabaseSetupUi(
-        schemaOutdated
-          ? 'Schema is outdated. Run latest supabase-schema.sql, then recheck.'
-          : 'Schema missing in Supabase. Run supabase-schema.sql, then recheck.'
-      );
+      updateSupabaseSetupUi('Supabase setup is pending. Demo/local mode is active until schema is applied.');
     }
     dbOnline = false;
     if (!silent) {
       const message = schemaIssue
-        ? 'Run the latest supabase-schema.sql in Supabase SQL Editor, then refresh.'
+        ? 'Supabase setup is pending. App is running in demo/local mode.'
         : fallbackNotice;
-      toast('inf', schemaIssue ? 'Supabase Schema Issue' : 'Supabase Sync Issue', message);
+      toast('inf', schemaIssue ? 'Supabase Setup Pending' : 'Supabase Sync Issue', message);
     }
     return false;
   }
@@ -621,13 +614,9 @@ async function checkSupabaseHealth(showToast = false) {
   supabaseHealth = { productsTable, ordersTable, schemaMissing, schemaOutdated };
 
   if (schemaMissing || schemaOutdated) {
-    setDbStatus(schemaOutdated ? 'Schema Update Needed' : 'Schema Missing', 'var(--red)');
-    updateSupabaseSetupUi(
-      schemaOutdated
-        ? 'Schema is outdated. Run latest supabase-schema.sql, then click Recheck Schema.'
-        : 'Schema missing in Supabase. Run supabase-schema.sql, then click Recheck Schema.'
-    );
-    if (showToast) toast('err', 'Supabase Schema Issue', 'Open SQL Editor, run latest supabase-schema.sql, then Recheck.');
+    setDbStatus('Offline / Demo', 'var(--amber)');
+    updateSupabaseSetupUi('Supabase setup is pending. Demo/local mode is active until schema is applied.');
+    if (showToast) toast('inf', 'Supabase Setup Pending', 'Run supabase-schema.sql in Supabase SQL Editor, then Recheck.');
   } else if (productsTable && ordersTable) {
     setDbStatus('Connected', 'var(--green)');
     updateSupabaseSetupUi('Schema is ready. You can now sync and seed products.');
@@ -692,7 +681,7 @@ async function seedSupabaseProducts() {
   }
   const health = await checkSupabaseHealth(false);
   if (health.schemaMissing || health.schemaOutdated) {
-    toast('err', 'Schema Issue', 'Run the latest supabase-schema.sql first, then seed products.');
+    toast('inf', 'Supabase Setup Pending', 'Run supabase-schema.sql first, then seed products.');
     return;
   }
 
@@ -728,7 +717,7 @@ async function syncAllProductsToSupabase() {
   }
   const health = await checkSupabaseHealth(false);
   if (health.schemaMissing || health.schemaOutdated) {
-    toast('err', 'Schema Issue', 'Run the latest supabase-schema.sql before syncing catalog.');
+    toast('inf', 'Supabase Setup Pending', 'Run supabase-schema.sql before syncing catalog.');
     return;
   }
 
