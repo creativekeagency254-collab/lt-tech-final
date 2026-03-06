@@ -2840,3 +2840,17 @@ textarea:focus-visible,
   --text4: #4b4b4b;
   --text5: #6e6e6e;
 }
+
+/* Mobile: keep first orange explore box full-width and visually full-size */
+@media (max-width: 900px) {
+  #page-explore .explore-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #page-explore .hero-banner-img {
+    grid-column: 1 / -1;
+    width: 100%;
+    aspect-ratio: auto;
+    min-height: 220px;
+  }
+}
