@@ -3269,9 +3269,20 @@ function updateAdminStats() {
 }
 
 function updateTopbarStats() {
-  const lo = JSON.parse(localStorage.getItem('ltl2_orders')||'[]');
-  document.getElementById('topbarNum').textContent = lo.length;
-  document.getElementById('topbarSub').textContent = lo.length === 1 ? 'Order · All time' : 'Orders · All time';
+  const lo = JSON.parse(localStorage.getItem('ltl2_orders') || '[]');
+  const topbarNum = document.getElementById('topbarNum');
+  const topbarSub = document.getElementById('topbarSub');
+  if (topbarNum) topbarNum.textContent = String(lo.length);
+  if (topbarSub) {
+    const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
+    if (isMobile) {
+      topbarSub.textContent = '';
+      topbarSub.style.display = 'none';
+    } else {
+      topbarSub.style.display = '';
+      topbarSub.textContent = lo.length === 1 ? 'Order · All time' : 'Orders · All time';
+    }
+  }
 }
 
 function renderAdminProducts() {
@@ -3895,9 +3906,11 @@ function syncSidebarForViewport() {
     setMobileSidebarOpen(false);
     const btn = document.getElementById('sidebarToggle');
     if (btn) btn.setAttribute('aria-pressed', 'false');
+    updateTopbarStats();
     return;
   }
   closeMobileSidebar();
+  updateTopbarStats();
 }
 
 window.addEventListener('resize', syncSidebarForViewport);
