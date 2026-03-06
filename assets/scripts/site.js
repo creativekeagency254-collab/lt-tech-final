@@ -3856,6 +3856,15 @@ function isMobileViewport() {
   return window.matchMedia('(max-width: 900px)').matches;
 }
 
+function resetHorizontalViewportShift() {
+  try {
+    document.documentElement.scrollLeft = 0;
+    if (document.body) document.body.scrollLeft = 0;
+    const y = window.scrollY || window.pageYOffset || 0;
+    window.scrollTo({ top: y, left: 0, behavior: 'auto' });
+  } catch (_) {}
+}
+
 function setMobileSidebarOpen(open) {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('mobOverlay');
@@ -3864,6 +3873,7 @@ function setMobileSidebarOpen(open) {
   sidebar.classList.toggle('open', isOpen);
   overlay.classList.toggle('show', isOpen);
   document.body.classList.toggle('mobile-sidebar-open', isOpen);
+  requestAnimationFrame(resetHorizontalViewportShift);
 }
 
 function toggleMobileSidebar() {
@@ -3907,10 +3917,12 @@ function syncSidebarForViewport() {
     const btn = document.getElementById('sidebarToggle');
     if (btn) btn.setAttribute('aria-pressed', 'false');
     updateTopbarStats();
+    requestAnimationFrame(resetHorizontalViewportShift);
     return;
   }
   closeMobileSidebar();
   updateTopbarStats();
+  requestAnimationFrame(resetHorizontalViewportShift);
 }
 
 window.addEventListener('resize', syncSidebarForViewport);
@@ -4003,6 +4015,7 @@ function toggleTheme() {
   root.setAttribute('data-theme', newTheme);
   localStorage.setItem('ltTheme', newTheme);
   syncThemeToggleUi(newTheme);
+  requestAnimationFrame(resetHorizontalViewportShift);
 }
 // Load saved theme on startup
 (function() {
