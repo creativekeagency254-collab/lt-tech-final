@@ -1759,8 +1759,8 @@ async function loadProducts() {
     products = FALLBACK_PRODUCTS;
     dbOnline = false;
     if (isSchemaProblemError(e)) {
-      setDbStatus('Schema Issue', 'var(--red)');
-      toastOnce('supabase-schema-issue', 'inf', 'Supabase Schema Issue', 'Run latest supabase-schema.sql in SQL Editor, then refresh.');
+      setDbStatus('Offline / Demo', 'var(--amber)');
+      toastOnce('supabase-schema-fallback', 'inf', 'Using Demo Mode', 'Supabase schema is not ready yet, so local/demo data is active.');
     } else {
       setDbStatus('Offline / Demo', 'var(--amber)');
     }
@@ -1788,10 +1788,10 @@ async function loadAdminOrders() {
   } catch(e) {
     console.warn('Supabase orders load failed:', e.message);
     dbOnline = false;
-    setDbStatus(isSchemaProblemError(e) ? 'Schema Issue' : 'Sync Issue', isSchemaProblemError(e) ? 'var(--red)' : 'var(--amber)');
+    setDbStatus('Offline / Demo', 'var(--amber)');
     orders = JSON.parse(localStorage.getItem('ltl2_orders') || '[]');
     renderOrdersTable();
-    if (isSchemaProblemError(e)) toastOnce('supabase-schema-issue-orders', 'inf', 'Supabase Schema Issue', 'Run latest supabase-schema.sql in Supabase SQL Editor.');
+    if (isSchemaProblemError(e)) toastOnce('supabase-schema-fallback-orders', 'inf', 'Using Local Orders', 'Supabase schema is not ready yet, so local orders are shown.');
     else toastOnce('local-orders-fallback', 'inf', 'Using Local Orders', 'Supabase orders table may not exist yet');
   }
 }
