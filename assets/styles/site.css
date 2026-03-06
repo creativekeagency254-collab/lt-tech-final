@@ -2896,3 +2896,70 @@ textarea:focus-visible,
     left: 12px;
   }
 }
+
+/* Sidebar collapse consistency across light/dark themes */
+body.sidebar-collapsed .theme-switcher .ts-label,
+body.sidebar-collapsed .theme-switcher .ts-track {
+  display: none !important;
+}
+
+body.sidebar-collapsed .theme-switcher {
+  width: 100%;
+  justify-content: center;
+  padding: 10px;
+  min-height: 40px;
+  overflow: hidden;
+}
+
+/* Mobile UX: horizontal category scroller + theme switcher placed under quick actions */
+@media (max-width: 900px) {
+  #page-explore .explore-header > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #page-explore .cat-chips {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  #page-explore .cat-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  #page-explore .cat-chip {
+    flex: 0 0 auto;
+  }
+
+  .main,
+  .page {
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    overflow-y: auto;
+  }
+
+  .sidebar-body {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-bottom: 8px;
+  }
+
+  .sidebar-bottom {
+    border-top: none;
+    padding: 0 12px 12px;
+  }
+
+  .theme-switcher {
+    width: 100%;
+    margin: 6px 0 0;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+}
